@@ -2364,6 +2364,7 @@ func (req *ValidatePurchaseHuaweiRequest) Do(ctx context.Context, cl *Client) (*
 	return res, nil
 }
 
+/*
 // ListSubscriptionsRequest is a ListSubscriptions request.
 type ListSubscriptionsRequest struct {
 	req *nkapi.ListSubscriptionsRequest
@@ -2477,7 +2478,9 @@ func (req *ValidateSubscriptionGoogleRequest) Do(ctx context.Context, cl *Client
 	}
 	return res, nil
 }
+*/
 
+/*
 // SubscriptionRequest is a Subscription request.
 type SubscriptionRequest struct {
 	req *nkapi.GetSubscriptionRequest
@@ -2503,6 +2506,8 @@ func (req *SubscriptionRequest) Do(ctx context.Context, cl *Client) (*Subscripti
 
 // SubscriptionResponse is a Subscription response.
 type SubscriptionResponse = nkapi.ValidatedSubscription
+
+*/
 
 // ListLeaderboardRecordsRequest is a ListLeaderboardRecords request.
 type ListLeaderboardRecordsRequest struct {
@@ -2684,9 +2689,11 @@ func (req *ListLeaderboardRecordsAroundOwnerRequest) Do(ctx context.Context, cl 
 	if req.req.Expiry != nil {
 		query.Set("expiry", strconv.FormatInt(int64(req.req.Expiry.Value), 10))
 	}
-	if req.req.Cursor != "" {
-		query.Set("cursor", req.req.Cursor)
-	}
+	/*
+		if req.req.Cursor != "" {
+			query.Set("cursor", req.req.Cursor)
+		}
+	*/
 	res := new(ListLeaderboardRecordsAroundOwnerResponse)
 	if err := cl.Do(ctx, "GET", "v2/leaderboard/"+req.req.LeaderboardId+"/owner/"+req.req.OwnerId, query, nil, res); err != nil {
 		return nil, err
@@ -2848,48 +2855,39 @@ func (req *DeleteNotificationsRequest) Do(ctx context.Context, cl *Client) error
 
 // RpcRequest is a Rpc request.
 type RpcRequest struct {
-	req *nkapi.Rpc
+	id      string
+	payload interface{}
+	httpKey string
 }
 
 // Rpc creates a new Rpc request.
 func Rpc(id string) *RpcRequest {
 	return &RpcRequest{
-		req: &nkapi.Rpc{
-			Id: id,
-		},
+		id: id,
 	}
 }
 
 // WithPayload sets the payload on the request.
-func (req *RpcRequest) WithPayload(payload string) *RpcRequest {
-	req.req.Payload = payload
+func (req *RpcRequest) WithPayload(payload interface{}) *RpcRequest {
+	req.payload = payload
 	return req
 }
 
 // WithHttpKey sets the httpKey on the request.
 func (req *RpcRequest) WithHttpKey(httpKey string) *RpcRequest {
-	req.req.HttpKey = httpKey
+	req.httpKey = httpKey
 	return req
 }
 
 // Do executes the request against the context and client.
-func (req *RpcRequest) Do(ctx context.Context, cl *Client) (*RpcResponse, error) {
+func (req *RpcRequest) Do(ctx context.Context, cl *Client, v interface{}) error {
 	query := url.Values{}
-	if req.req.Payload != "" {
-		query.Set("payload", req.req.Payload)
+	query.Set("unwrap", "true")
+	if req.httpKey != "" {
+		query.Set("http_key", req.httpKey)
 	}
-	if req.req.HttpKey != "" {
-		query.Set("httpKey", req.req.HttpKey)
-	}
-	res := new(RpcResponse)
-	if err := cl.Do(ctx, "GET", "v2/rpc/"+req.req.Id, query, nil, res); err != nil {
-		return nil, err
-	}
-	return res, nil
+	return cl.Do(ctx, "POST", "v2/rpc/"+req.id, query, req.payload, v)
 }
-
-// RpcResponse is a Rpc response.
-type RpcResponse = nkapi.Rpc
 
 // SessionLogoutRequest is a SessionLogout request.
 type SessionLogoutRequest struct {
@@ -3320,9 +3318,11 @@ func (req *ListTournamentRecordsAroundOwnerRequest) Do(ctx context.Context, cl *
 	if req.req.Expiry != nil {
 		query.Set("expiry", strconv.FormatInt(int64(req.req.Expiry.Value), 10))
 	}
-	if req.req.Cursor != "" {
-		query.Set("cursor", req.req.Cursor)
-	}
+	/*
+		if req.req.Cursor != "" {
+			query.Set("cursor", req.req.Cursor)
+		}
+	*/
 	res := new(ListTournamentRecordsAroundOwnerResponse)
 	if err := cl.Do(ctx, "GET", "v2/tournament/"+req.req.TournamentId+"/owner/"+req.req.OwnerId, query, nil, res); err != nil {
 		return nil, err
