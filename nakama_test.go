@@ -65,8 +65,8 @@ func TestMain(m *testing.M) {
 	code := 0
 	pull := os.Getenv("PULL")
 	nkTest = nktest.New(
-		nktest.WithBuildModule("./apitest"),
 		nktest.WithAlwaysPull(pull != "" && pull != "false" && pull != "0"),
+		nktest.WithBuildConfig("./apitest", nktest.WithDefaultGoEnv(), nktest.WithDefaultGoVolumes()),
 	)
 	if err := nkTest.Run(globalCtx); err == nil {
 		code = m.Run()
@@ -75,6 +75,6 @@ func TestMain(m *testing.M) {
 		code = 1
 	}
 	cancel()
-	<-time.After(3 * time.Second)
+	<-time.After(2200 * time.Millisecond)
 	os.Exit(code)
 }

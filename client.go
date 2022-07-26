@@ -49,7 +49,7 @@ func New(opts ...Option) *Client {
 // decoding results to v.
 func (cl *Client) Do(ctx context.Context, method, typ string, query url.Values, params, v interface{}) error {
 	urlstr := cl.url + "/" + typ
-	if query != nil && len(query) != 0 {
+	if len(query) != 0 {
 		urlstr += "?" + query.Encode()
 	}
 	u, err := url.Parse(urlstr)
