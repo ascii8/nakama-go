@@ -20,6 +20,8 @@ type Client struct {
 	cl        *http.Client
 	url       string
 	token     string
+	httpKey   string
+	serverKey string
 	username  string
 	password  string
 	jar       http.CookieJar
@@ -49,6 +51,9 @@ func New(opts ...Option) *Client {
 // decoding results to v.
 func (cl *Client) Do(ctx context.Context, method, typ string, query url.Values, params, v interface{}) error {
 	urlstr := cl.url + "/" + typ
+	if query.Get("http_key") == "" && cl.httpKey != "" {
+		query.Set("http_key", cl.httpKey)
+	}
 	if len(query) != 0 {
 		urlstr += "?" + query.Encode()
 	}
@@ -106,6 +111,11 @@ func (cl *Client) Account(ctx context.Context) (*nkapi.Account, error) {
 	return Account().Do(ctx, cl)
 }
 
+// Dial opens the websocket connection.
+func (cl *Client) Dial(ctx context.Context, opts ...DialOption) (*Conn, error) {
+	return Dial(ctx, append([]DialOption{FromClient(cl)}, opts...)...)
+}
+
 // Option is a nakama client option.
 type Option func(*Client)
 
@@ -113,6 +123,20 @@ type Option func(*Client)
 func WithURL(urlstr string) Option {
 	return func(cl *Client) {
 		cl.url = urlstr
+	}
+}
+
+// WithToken is a nakama client option to set the token used.
+func WithToken(token string) Option {
+	return func(cl *Client) {
+		cl.token = token
+	}
+}
+
+// WithHttpKey is a nakama client option to set the http key used.
+func WithHttpKey(httpKey string) Option {
+	return func(cl *Client) {
+		cl.httpKey = httpKey
 	}
 }
 

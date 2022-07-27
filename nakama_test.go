@@ -19,21 +19,25 @@ var globalCtx context.Context
 var nkTest *nktest.Runner
 
 func TestHealthcheck(t *testing.T) {
-	cl := New(WithURL(nkTest.HttpLocal()))
-	if err := cl.Healthcheck(globalCtx); err != nil {
+	ctx, cancel := context.WithCancel(globalCtx)
+	defer cancel()
+	cl := newClient(ctx, t, false)
+	if err := cl.Healthcheck(ctx); err != nil {
 		t.Errorf("expected no error, got: %v", err)
 	}
 }
 
 func TestRpc(t *testing.T) {
-	cl := New(WithURL(nkTest.HttpLocal()))
+	ctx, cancel := context.WithCancel(globalCtx)
+	defer cancel()
+	cl := newClient(ctx, t, false)
 	var res rewards
 	amount := int64(1000)
 	if err := Rpc("dailyRewards").
 		WithHttpKey(nkTest.Name()).
 		WithPayload(rewards{
 			Rewards: amount,
-		}).Do(globalCtx, cl, &res); err != nil {
+		}).Do(ctx, cl, &res); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	t.Logf("rewards: %d", res.Rewards)
@@ -42,8 +46,37 @@ func TestRpc(t *testing.T) {
 	}
 }
 
+func TestWebsocket(t *testing.T) {
+	ctx, cancel := context.WithCancel(globalCtx)
+	defer cancel()
+	conn, err := newClient(ctx, t, true).Dial(ctx, WithDialCreateStatus(true))
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	defer conn.Close()
+}
+
 type rewards struct {
 	Rewards int64 `json:"rewards,omitempty"`
+}
+
+func newClient(ctx context.Context, t *testing.T, addProxyLogger bool, opts ...Option) *Client {
+	local := nkTest.HttpLocal()
+	t.Logf("real: %s", local)
+	logger := nktest.NewLogger(t.Logf)
+	var proxyOpts []nktest.ProxyOption
+	if addProxyLogger {
+		proxyOpts = append(proxyOpts, nktest.WithLogger(logger))
+	}
+	urlstr, err := nktest.NewProxy(proxyOpts...).Run(ctx, local)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	t.Logf("url: %s", urlstr)
+	return New(append([]Option{
+		WithURL(urlstr),
+		WithTransport(logger.Transport(nil)),
+	}, opts...)...)
 }
 
 // TestMain handles setting up and tearing down the postgres and nakama docker
@@ -65,8 +98,9 @@ func TestMain(m *testing.M) {
 	code := 0
 	pull := os.Getenv("PULL")
 	nkTest = nktest.New(
+		nktest.WithDir("./apitest"),
 		nktest.WithAlwaysPull(pull != "" && pull != "false" && pull != "0"),
-		nktest.WithBuildConfig("./apitest", nktest.WithDefaultGoEnv(), nktest.WithDefaultGoVolumes()),
+		nktest.WithBuildConfig("./nkapitest", nktest.WithDefaultGoEnv(), nktest.WithDefaultGoVolumes()),
 	)
 	if err := nkTest.Run(globalCtx); err == nil {
 		code = m.Run()
