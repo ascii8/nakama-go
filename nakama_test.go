@@ -87,33 +87,23 @@ func TestAuthenticateDevice(t *testing.T) {
 	ctx, cancel := context.WithCancel(globalCtx)
 	defer cancel()
 	cl := newClient(ctx, t, false, WithServerKey(nkTest.ServerKey()))
-	deviceId := uuid.New().String()
-	t.Logf("registering: %s", deviceId)
-	if err := cl.AuthenticateDevice(ctx, true, deviceId, ""); err != nil {
-		t.Fatalf("expected no error: got: %v", err)
-	}
-	expiry := cl.SessionExpiry()
-	t.Logf("expiry: %s", cl.SessionExpiry())
-	if expiry.IsZero() || expiry.Before(time.Now()) {
-		t.Errorf("expected non-zero expiry in the future, got: %s", expiry)
-	}
-	res, err := cl.Account(ctx)
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	t.Logf("account: %+v", res)
-	if len(res.Devices) == 0 {
-		t.Fatalf("expected there to be at least one device")
-	}
-	i := slices.IndexFunc(res.Devices, func(d *nkapi.AccountDevice) bool {
-		return d.Id == deviceId
-	})
-	if i == -1 {
-		t.Errorf("expected accountRes.Devices to contain %s", deviceId)
-	}
+	createAccount(ctx, t, cl)
 }
 
 func TestWebsocket(t *testing.T) {
+	ctx, cancel := context.WithCancel(globalCtx)
+	defer cancel()
+	cl := newClient(ctx, t, false, WithServerKey(nkTest.ServerKey()))
+	createAccount(ctx, t, cl)
+	conn, err := cl.NewConn(ctx)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	defer conn.Close()
+	select {
+	case <-ctx.Done():
+	case <-time.After(3 * time.Minute):
+	}
 }
 
 type rewards struct {
@@ -138,4 +128,31 @@ func newClient(ctx context.Context, t *testing.T, addProxyLogger bool, opts ...O
 		WithTransport(logger.Transport(nil)),
 		WithServerKey(nkTest.ServerKey()),
 	}, opts...)...)
+}
+
+func createAccount(ctx context.Context, t *testing.T, cl *Client) {
+	deviceId := uuid.New().String()
+	t.Logf("registering: %s", deviceId)
+	if err := cl.AuthenticateDevice(ctx, true, deviceId, ""); err != nil {
+		t.Fatalf("expected no error: got: %v", err)
+	}
+	expiry := cl.SessionExpiry()
+	t.Logf("expiry: %s", cl.SessionExpiry())
+	if expiry.IsZero() || expiry.Before(time.Now()) {
+		t.Fatalf("expected non-zero expiry in the future, got: %s", expiry)
+	}
+	res, err := cl.Account(ctx)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	t.Logf("account: %+v", res)
+	if len(res.Devices) == 0 {
+		t.Fatalf("expected there to be at least one device")
+	}
+	i := slices.IndexFunc(res.Devices, func(d *nkapi.AccountDevice) bool {
+		return d.Id == deviceId
+	})
+	if i == -1 {
+		t.Fatalf("expected accountRes.Devices to contain %s", deviceId)
+	}
 }

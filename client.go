@@ -61,6 +61,28 @@ func New(opts ...Option) *Client {
 	return cl
 }
 
+// HttpClient satisfies the handler interface.
+func (cl *Client) HttpClient() *http.Client {
+	return cl.cl
+}
+
+// WebsocketURL satisfies the Handler interface.
+func (cl *Client) WebsocketURL() (string, error) {
+	u, err := url.Parse(cl.url)
+	if err != nil {
+		return "", err
+	}
+	scheme := "ws"
+	switch strings.ToLower(u.Scheme) {
+	case "http":
+	case "https":
+		scheme = "wss"
+	default:
+		return "", fmt.Errorf("invalid scheme %q", u.Scheme)
+	}
+	return scheme + "://" + u.Host + DefaultWsPath, nil
+}
+
 // BuildRequest builds a http request.
 func (cl *Client) BuildRequest(ctx context.Context, method, typ string, query url.Values, body io.Reader) (*http.Request, error) {
 	// build url
@@ -191,13 +213,6 @@ func (cl *Client) Unmarshal(r io.Reader, v interface{}) error {
 	return dec.Decode(v)
 }
 
-// Run opens a nakama realtime websocket connection, and runs until the context
-// is closed.
-func (cl *Client) Run(ctx context.Context, opts ...ConnOption) (*Conn, error) {
-	// return NewConn(ctx, append([]ConnOption{FromClient(cl)}, opts...)...).Run(ctx)
-	return nil, nil
-}
-
 // SessionStart starts a session.
 func (cl *Client) SessionStart(session *SessionResponse) error {
 	if session.Token == "" {
@@ -232,9 +247,19 @@ func (cl *Client) SessionStart(session *SessionResponse) error {
 }
 
 // SessionRefresh refreshes auth token for the session.
-func (cl *Client) SessionRefresh(cxt context.Context) error {
-	if !cl.SessionExpired() {
+func (cl *Client) SessionRefresh(ctx context.Context) error {
+	switch {
+	case cl.session == nil:
+		return fmt.Errorf("unable to refresh token: no active session")
+	case !cl.SessionExpired():
 		return nil
+	}
+	res, err := SessionRefresh(cl.session.RefreshToken).Do(ctx, cl)
+	if err != nil {
+		return fmt.Errorf("unable to refresh token: %w", err)
+	}
+	if err := cl.SessionStart(res); err != nil {
+		return fmt.Errorf("unable to refresh token: %w", err)
 	}
 	return nil
 }
@@ -276,6 +301,14 @@ func (cl *Client) SessionLogout(ctx context.Context) error {
 		Do(ctx, cl)
 	cl.session = nil
 	return nil
+}
+
+// Token returns the current session token. Attempts to
+func (cl *Client) Token(ctx context.Context) (string, error) {
+	if err := cl.SessionRefresh(ctx); err != nil {
+		return "", err
+	}
+	return cl.session.Token, nil
 }
 
 // Healthcheck checks the health of the remote nakama server.
@@ -404,6 +437,12 @@ func (cl *Client) AuthenticateSteam(ctx context.Context, create, sync bool, toke
 		return err
 	}
 	return cl.SessionStart(res)
+}
+
+// NewConn creates a new a nakama realtime websocket connection, and runs until
+// the context is closed.
+func (cl *Client) NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
+	return NewConn(ctx, cl, opts...)
 }
 
 // Option is a nakama client option.

@@ -3,77 +3,103 @@ package nakama
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 
-	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
 )
 
 // Handler is the interface for connection handlers.
 type Handler interface {
 	HttpClient() *http.Client
-	Token() (string, string, error)
-	Query() url.Values
-	Marshal(proto.Message) ([]byte, error)
-	Unmarshal([]byte, bool, proto.Message) error
+	WebsocketURL() (string, error)
+	Token(context.Context) (string, error)
+	Marshal(interface{}) (io.Reader, error)
+	Unmarshal(io.Reader, interface{}) error
 }
 
 // Conn is a nakama realtime websocket connection.
 type Conn struct {
-	url  string
-	conn *websocket.Conn
+	url    string
+	token  string
+	query  url.Values
+	conn   *websocket.Conn
+	cancel func()
 }
 
 // NewConn creates a new nakama realtime websocket connection.
 func NewConn(ctx context.Context, h Handler, opts ...ConnOption) (*Conn, error) {
-	conn := new(Conn)
+	conn := &Conn{
+		query: url.Values{},
+	}
 	for _, o := range opts {
 		o(conn)
 	}
+	// build url
 	urlstr := conn.url
-	if q := h.Query(); len(q) != 0 {
-		urlstr += "?" + q.Encode()
+	if urlstr == "" {
+		var err error
+		if urlstr, err = h.WebsocketURL(); err != nil {
+			return nil, err
+		}
 	}
-	c, _, err := websocket.Dial(ctx, urlstr, &websocket.DialOptions{
+	// build token
+	token := conn.token
+	if token == "" {
+		var err error
+		if token, err = h.Token(ctx); err != nil {
+			return nil, err
+		}
+	}
+	// build query
+	query := url.Values{}
+	for k, v := range conn.query {
+		query[k] = v
+	}
+	query.Set("token", token)
+	c, _, err := websocket.Dial(ctx, urlstr+"?"+query.Encode(), &websocket.DialOptions{
 		HTTPClient: h.HttpClient(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to dial %s: %w", urlstr, err)
 	}
+	ctx, conn.cancel = context.WithCancel(ctx)
+	go conn.run(ctx)
 	return &Conn{conn: c}, nil
+}
+
+// run handles incoming and outgoing websocket messages.
+func (conn *Conn) run(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+	}
 }
 
 // Close closes the websocket connection.
 func (conn *Conn) Close() error {
-	return conn.conn.Close(websocket.StatusGoingAway, "going away")
+	if conn.cancel != nil {
+		defer conn.cancel()
+	}
+	if conn.conn != nil {
+		return conn.conn.Close(websocket.StatusGoingAway, "going away")
+	}
+	return nil
 }
 
 // ConnOption is a nakama realtime websocket connection option.
 type ConnOption func(*Conn)
 
-/*
-	u, err := url.Parse(cl.url)
-	switch {
-	case err != nil:
-		return err
-	}
-	scheme := "ws"
-	switch strings.ToLower(u.Scheme) {
-	case "http":
-	case "https":
-		scheme = "wss"
-	default:
-		return fmt.Errorf("invalid scheme %q", u.Scheme)
-	}
-	conn.cl = cl.cl
-	conn.url = scheme + "://" + u.Host + DefaultWsPath
-	conn.query.Set("token", cl.token)
-*/
-
-// WithConnUrl is a nakama websocket dial option to set the dial url.
+// WithConnUrl is a nakama websocket connection option to set the dial url.
 func WithConnUrl(urlstr string) ConnOption {
 	return func(conn *Conn) {
 		conn.url = urlstr
+	}
+}
+
+// WithConnToken is a nakama websocket connection option to set the dial token.
+func WithConnToken(token string) ConnOption {
+	return func(conn *Conn) {
+		conn.token = token
 	}
 }
