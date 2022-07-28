@@ -67,6 +67,8 @@ func FromClient(cl *Client) DialOption {
 		switch {
 		case err != nil:
 			return err
+		case cl.serverKey != "":
+			u.User = url.UserPassword(cl.serverKey, "")
 		case cl.username != "":
 			u.User = url.UserPassword(cl.username, cl.password)
 		}

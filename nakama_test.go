@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"github.com/ascii8/nktest"
+	"github.com/google/uuid"
+	nkapi "github.com/heroiclabs/nakama-common/api"
+	"golang.org/x/exp/slices"
 )
 
 // globalCtx is the global context.
@@ -17,67 +20,6 @@ var globalCtx context.Context
 
 // nkTest is the nakama test runner.
 var nkTest *nktest.Runner
-
-func TestHealthcheck(t *testing.T) {
-	ctx, cancel := context.WithCancel(globalCtx)
-	defer cancel()
-	cl := newClient(ctx, t, false)
-	if err := cl.Healthcheck(ctx); err != nil {
-		t.Errorf("expected no error, got: %v", err)
-	}
-}
-
-func TestRpc(t *testing.T) {
-	ctx, cancel := context.WithCancel(globalCtx)
-	defer cancel()
-	cl := newClient(ctx, t, false)
-	var res rewards
-	amount := int64(1000)
-	if err := Rpc("dailyRewards").
-		WithHttpKey(nkTest.Name()).
-		WithPayload(rewards{
-			Rewards: amount,
-		}).Do(ctx, cl, &res); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	t.Logf("rewards: %d", res.Rewards)
-	if res.Rewards != 2*amount {
-		t.Errorf("expected %d, got: %d", 2*amount, res.Rewards)
-	}
-}
-
-func TestWebsocket(t *testing.T) {
-	ctx, cancel := context.WithCancel(globalCtx)
-	defer cancel()
-	conn, err := newClient(ctx, t, true).Dial(ctx, WithDialCreateStatus(true))
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	defer conn.Close()
-}
-
-type rewards struct {
-	Rewards int64 `json:"rewards,omitempty"`
-}
-
-func newClient(ctx context.Context, t *testing.T, addProxyLogger bool, opts ...Option) *Client {
-	local := nkTest.HttpLocal()
-	t.Logf("real: %s", local)
-	logger := nktest.NewLogger(t.Logf)
-	var proxyOpts []nktest.ProxyOption
-	if addProxyLogger {
-		proxyOpts = append(proxyOpts, nktest.WithLogger(logger))
-	}
-	urlstr, err := nktest.NewProxy(proxyOpts...).Run(ctx, local)
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	t.Logf("url: %s", urlstr)
-	return New(append([]Option{
-		WithURL(urlstr),
-		WithTransport(logger.Transport(nil)),
-	}, opts...)...)
-}
 
 // TestMain handles setting up and tearing down the postgres and nakama docker
 // images.
@@ -111,4 +53,94 @@ func TestMain(m *testing.M) {
 	cancel()
 	<-time.After(2200 * time.Millisecond)
 	os.Exit(code)
+}
+
+func TestHealthcheck(t *testing.T) {
+	ctx, cancel := context.WithCancel(globalCtx)
+	defer cancel()
+	cl := newClient(ctx, t, false)
+	if err := cl.Healthcheck(ctx); err != nil {
+		t.Errorf("expected no error, got: %v", err)
+	}
+}
+
+func TestRpc(t *testing.T) {
+	ctx, cancel := context.WithCancel(globalCtx)
+	defer cancel()
+	cl := newClient(ctx, t, false)
+	var res rewards
+	amount := int64(1000)
+	if err := Rpc("dailyRewards").
+		WithHttpKey(nkTest.Name()).
+		WithPayload(rewards{
+			Rewards: amount,
+		}).Do(ctx, cl, &res); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	t.Logf("rewards: %d", res.Rewards)
+	if res.Rewards != 2*amount {
+		t.Errorf("expected %d, got: %d", 2*amount, res.Rewards)
+	}
+}
+
+func TestAuthenticateDevice(t *testing.T) {
+	ctx, cancel := context.WithCancel(globalCtx)
+	defer cancel()
+	deviceId := uuid.New().String()
+	t.Logf("registering: %s", deviceId)
+	cl := newClient(ctx, t, false, WithServerKey(nkTest.ServerKey()))
+	authRes, err := AuthenticateDevice().
+		WithCreate(true).
+		WithId(deviceId).Do(ctx, cl)
+	if err != nil {
+		t.Fatalf("expected no error: got: %v", err)
+	}
+	if authRes.Token == "" {
+		t.Fatalf("expected token != \"\"")
+	}
+	t.Logf("created: %t", authRes.Created)
+	t.Logf("token: %s", authRes.Token)
+	t.Logf("refresh: %s", authRes.RefreshToken)
+	cl.SetToken(authRes.Token)
+	accountRes, err := Account().Do(ctx, cl)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	t.Logf("account: %+v", accountRes)
+	if len(accountRes.Devices) == 0 {
+		t.Fatalf("expected there to be at least one device")
+	}
+	i := slices.IndexFunc(accountRes.Devices, func(d *nkapi.AccountDevice) bool {
+		return d.Id == deviceId
+	})
+	if i == -1 {
+		t.Errorf("expected accountRes.Devices to contain %s", deviceId)
+	}
+}
+
+func TestWebsocket(t *testing.T) {
+}
+
+type rewards struct {
+	Rewards int64 `json:"rewards,omitempty"`
+}
+
+func newClient(ctx context.Context, t *testing.T, addProxyLogger bool, opts ...Option) *Client {
+	local := nkTest.HttpLocal()
+	t.Logf("real: %s", local)
+	logger := nktest.NewLogger(t.Logf)
+	var proxyOpts []nktest.ProxyOption
+	if addProxyLogger {
+		proxyOpts = append(proxyOpts, nktest.WithLogger(logger))
+	}
+	urlstr, err := nktest.NewProxy(proxyOpts...).Run(ctx, local)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	t.Logf("url: %s", urlstr)
+	return New(append([]Option{
+		WithURL(urlstr),
+		WithTransport(logger.Transport(nil)),
+		WithServerKey(nkTest.ServerKey()),
+	}, opts...)...)
 }
