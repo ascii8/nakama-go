@@ -86,31 +86,26 @@ func TestRpc(t *testing.T) {
 func TestAuthenticateDevice(t *testing.T) {
 	ctx, cancel := context.WithCancel(globalCtx)
 	defer cancel()
+	cl := newClient(ctx, t, false, WithServerKey(nkTest.ServerKey()))
 	deviceId := uuid.New().String()
 	t.Logf("registering: %s", deviceId)
-	cl := newClient(ctx, t, false, WithServerKey(nkTest.ServerKey()))
-	authRes, err := AuthenticateDevice().
-		WithCreate(true).
-		WithId(deviceId).Do(ctx, cl)
-	if err != nil {
+	if err := cl.AuthenticateDevice(ctx, true, deviceId, ""); err != nil {
 		t.Fatalf("expected no error: got: %v", err)
 	}
-	if authRes.Token == "" {
-		t.Fatalf("expected token != \"\"")
+	expiry := cl.SessionExpiry()
+	t.Logf("expiry: %s", cl.SessionExpiry())
+	if expiry.IsZero() || expiry.Before(time.Now()) {
+		t.Errorf("expected non-zero expiry in the future, got: %s", expiry)
 	}
-	t.Logf("created: %t", authRes.Created)
-	t.Logf("token: %s", authRes.Token)
-	t.Logf("refresh: %s", authRes.RefreshToken)
-	cl.SetToken(authRes.Token)
-	accountRes, err := Account().Do(ctx, cl)
+	res, err := cl.Account(ctx)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	t.Logf("account: %+v", accountRes)
-	if len(accountRes.Devices) == 0 {
+	t.Logf("account: %+v", res)
+	if len(res.Devices) == 0 {
 		t.Fatalf("expected there to be at least one device")
 	}
-	i := slices.IndexFunc(accountRes.Devices, func(d *nkapi.AccountDevice) bool {
+	i := slices.IndexFunc(res.Devices, func(d *nkapi.AccountDevice) bool {
 		return d.Id == deviceId
 	})
 	if i == -1 {

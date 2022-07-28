@@ -23,7 +23,7 @@ func Healthcheck() *HealthcheckRequest {
 
 // Do executes the healthcheck request against the context and client.
 func (req *HealthcheckRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "GET", "healthcheck", nil, nil, nil)
+	return cl.Do(ctx, "GET", "healthcheck", true, nil, nil, nil)
 }
 
 // AccountRequest is a account request.
@@ -37,7 +37,7 @@ func Account() *AccountRequest {
 // Do executes the request against the context and client.
 func (req *AccountRequest) Do(ctx context.Context, cl *Client) (*AccountResponse, error) {
 	res := new(nkapi.Account)
-	if err := cl.Do(ctx, "GET", "v2/account", nil, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/account", true, nil, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -94,7 +94,7 @@ func (req *UpdateAccountRequest) WithTimezone(timezone string) *UpdateAccountReq
 
 // Do executes the request against the context and client.
 func (req *UpdateAccountRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "PUT", "v2/account", nil, req, nil)
+	return cl.Do(ctx, "PUT", "v2/account", true, nil, req, nil)
 }
 
 // SessionResponse is the authenticate repsonse.
@@ -148,7 +148,7 @@ func (req *AuthenticateAppleRequest) Do(ctx context.Context, cl *Client) (*Sessi
 		query.Set("username", req.Username)
 	}
 	res := new(SessionResponse)
-	if err := cl.Do(ctx, "POST", "v2/account/authenticate/apple", query, req.Account, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/account/authenticate/apple", false, query, req.Account, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -202,7 +202,7 @@ func (req *AuthenticateCustomRequest) Do(ctx context.Context, cl *Client) (*Sess
 		query.Set("username", req.Username)
 	}
 	res := new(SessionResponse)
-	if err := cl.Do(ctx, "POST", "v2/account/authenticate/custom", query, req.Account, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/account/authenticate/custom", false, query, req.Account, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -256,7 +256,7 @@ func (req *AuthenticateDeviceRequest) Do(ctx context.Context, cl *Client) (*Sess
 		query.Set("username", req.Username)
 	}
 	res := new(SessionResponse)
-	if err := cl.Do(ctx, "POST", "v2/account/authenticate/device", query, req.Account, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/account/authenticate/device", false, query, req.Account, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -316,7 +316,7 @@ func (req *AuthenticateEmailRequest) Do(ctx context.Context, cl *Client) (*Sessi
 		query.Set("username", req.Username)
 	}
 	res := new(SessionResponse)
-	if err := cl.Do(ctx, "POST", "v2/account/authenticate/email", query, req.Account, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/account/authenticate/email", false, query, req.Account, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -379,7 +379,7 @@ func (req *AuthenticateFacebookRequest) Do(ctx context.Context, cl *Client) (*Se
 		query.Set("sync", strconv.FormatBool(req.Sync.Value))
 	}
 	res := new(SessionResponse)
-	if err := cl.Do(ctx, "POST", "v2/account/authenticate/facebook", query, req.Account, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/account/authenticate/facebook", false, query, req.Account, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -433,7 +433,7 @@ func (req *AuthenticateFacebookInstantGameRequest) Do(ctx context.Context, cl *C
 		query.Set("username", req.Username)
 	}
 	res := new(SessionResponse)
-	if err := cl.Do(ctx, "POST", "v2/account/authenticate/facebookinstantgame", query, req.Account, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/account/authenticate/facebookinstantgame", false, query, req.Account, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -517,7 +517,7 @@ func (req *AuthenticateGameCenterRequest) Do(ctx context.Context, cl *Client) (*
 		query.Set("username", req.Username)
 	}
 	res := new(SessionResponse)
-	if err := cl.Do(ctx, "POST", "v2/account/authenticate/gamecenter", query, req.Account, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/account/authenticate/gamecenter", false, query, req.Account, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -571,7 +571,7 @@ func (req *AuthenticateGoogleRequest) Do(ctx context.Context, cl *Client) (*Sess
 		query.Set("username", req.Username)
 	}
 	res := new(SessionResponse)
-	if err := cl.Do(ctx, "POST", "v2/account/authenticate/google", query, req.Account, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/account/authenticate/google", false, query, req.Account, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -634,7 +634,7 @@ func (req *AuthenticateSteamRequest) Do(ctx context.Context, cl *Client) (*Sessi
 		query.Set("sync", strconv.FormatBool(req.Sync.Value))
 	}
 	res := new(SessionResponse)
-	if err := cl.Do(ctx, "POST", "v2/account/authenticate/steam", query, req.Account, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/account/authenticate/steam", false, query, req.Account, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -664,7 +664,7 @@ func (req *LinkAppleRequest) WithVars(vars map[string]string) *LinkAppleRequest 
 
 // Do executes the request against the context and client.
 func (req *LinkAppleRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/link/apple", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/link/apple", true, nil, req, nil)
 }
 
 // LinkCustomRequest is a LinkCustom request.
@@ -691,7 +691,7 @@ func (req *LinkCustomRequest) WithVars(vars map[string]string) *LinkCustomReques
 
 // Do executes the request against the context and client.
 func (req *LinkCustomRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/link/custom", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/link/custom", true, nil, req, nil)
 }
 
 // LinkDeviceRequest is a LinkDevice request.
@@ -718,7 +718,7 @@ func (req *LinkDeviceRequest) WithVars(vars map[string]string) *LinkDeviceReques
 
 // Do executes the request against the context and client.
 func (req *LinkDeviceRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/link/device", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/link/device", true, nil, req, nil)
 }
 
 // LinkEmailRequest is a LinkEmail request.
@@ -751,7 +751,7 @@ func (req *LinkEmailRequest) WithVars(vars map[string]string) *LinkEmailRequest 
 
 // Do executes the request against the context and client.
 func (req *LinkEmailRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/link/email", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/link/email", true, nil, req, nil)
 }
 
 // LinkFacebookRequest is a LinkFacebook request.
@@ -792,7 +792,7 @@ func (req *LinkFacebookRequest) Do(ctx context.Context, cl *Client) error {
 	if req.Sync != nil {
 		query.Set("sync", strconv.FormatBool(req.Sync.Value))
 	}
-	return cl.Do(ctx, "POST", "v2/account/link/facebook", query, req.Account, nil)
+	return cl.Do(ctx, "POST", "v2/account/link/facebook", true, query, req.Account, nil)
 }
 
 // LinkFacebookInstantGameRequest is a LinkFacebookInstantGame request.
@@ -819,7 +819,7 @@ func (req *LinkFacebookInstantGameRequest) WithVars(vars map[string]string) *Lin
 
 // Do executes the request against the context and client.
 func (req *LinkFacebookInstantGameRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/link/facebookinstantgame", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/link/facebookinstantgame", true, nil, req, nil)
 }
 
 // LinkGameCenterRequest is a LinkGameCenter request.
@@ -876,7 +876,7 @@ func (req *LinkGameCenterRequest) WithVars(vars map[string]string) *LinkGameCent
 
 // Do executes the request against the context and client.
 func (req *LinkGameCenterRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/link/gamecenter", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/link/gamecenter", true, nil, req, nil)
 }
 
 // LinkGoogleRequest is a LinkGoogle request.
@@ -903,7 +903,7 @@ func (req *LinkGoogleRequest) WithVars(vars map[string]string) *LinkGoogleReques
 
 // Do executes the request against the context and client.
 func (req *LinkGoogleRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/link/google", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/link/google", true, nil, req, nil)
 }
 
 // LinkSteamRequest is a LinkSteam request.
@@ -944,7 +944,7 @@ func (req *LinkSteamRequest) Do(ctx context.Context, cl *Client) error {
 	if req.Sync != nil {
 		query.Set("sync", strconv.FormatBool(req.Sync.Value))
 	}
-	return cl.Do(ctx, "POST", "v2/account/link/steam", query, req.Account, nil)
+	return cl.Do(ctx, "POST", "v2/account/link/steam", true, query, req.Account, nil)
 }
 
 // SessionRefreshRequest is a SessionRefresh request.
@@ -953,14 +953,12 @@ type SessionRefreshRequest struct {
 }
 
 // SessionRefresh creates a new SessionRefresh request.
-func SessionRefresh() *SessionRefreshRequest {
-	return &SessionRefreshRequest{}
-}
-
-// WithToken sets the token on the request.
-func (req *SessionRefreshRequest) WithToken(token string) *SessionRefreshRequest {
-	req.Token = token
-	return req
+func SessionRefresh(refreshToken string) *SessionRefreshRequest {
+	return &SessionRefreshRequest{
+		SessionRefreshRequest: nkapi.SessionRefreshRequest{
+			Token: refreshToken,
+		},
+	}
 }
 
 // WithVars sets the vars on the request.
@@ -972,7 +970,7 @@ func (req *SessionRefreshRequest) WithVars(vars map[string]string) *SessionRefre
 // Do executes the request against the context and client.
 func (req *SessionRefreshRequest) Do(ctx context.Context, cl *Client) (*SessionResponse, error) {
 	res := new(SessionResponse)
-	if err := cl.Do(ctx, "POST", "v2/account/session/refresh", nil, req, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/account/session/refresh", false, nil, req, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -1002,7 +1000,7 @@ func (req *UnlinkAppleRequest) WithVars(vars map[string]string) *UnlinkAppleRequ
 
 // Do executes the request against the context and client.
 func (req *UnlinkAppleRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/unlink/apple", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/unlink/apple", true, nil, req, nil)
 }
 
 // UnlinkCustomRequest is a UnlinkCustom request.
@@ -1029,7 +1027,7 @@ func (req *UnlinkCustomRequest) WithVars(vars map[string]string) *UnlinkCustomRe
 
 // Do executes the request against the context and client.
 func (req *UnlinkCustomRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/unlink/custom", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/unlink/custom", true, nil, req, nil)
 }
 
 // UnlinkDeviceRequest is a UnlinkDevice request.
@@ -1056,7 +1054,7 @@ func (req *UnlinkDeviceRequest) WithVars(vars map[string]string) *UnlinkDeviceRe
 
 // Do executes the request against the context and client.
 func (req *UnlinkDeviceRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/unlink/device", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/unlink/device", true, nil, req, nil)
 }
 
 // UnlinkEmailRequest is a UnlinkEmail request.
@@ -1089,7 +1087,7 @@ func (req *UnlinkEmailRequest) WithVars(vars map[string]string) *UnlinkEmailRequ
 
 // Do executes the request against the context and client.
 func (req *UnlinkEmailRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/unlink/email", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/unlink/email", true, nil, req, nil)
 }
 
 // UnlinkFacebookRequest is a UnlinkFacebook request.
@@ -1116,7 +1114,7 @@ func (req *UnlinkFacebookRequest) WithVars(vars map[string]string) *UnlinkFacebo
 
 // Do executes the request against the context and client.
 func (req *UnlinkFacebookRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/unlink/facebook", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/unlink/facebook", true, nil, req, nil)
 }
 
 // UnlinkFacebookInstantGameRequest is a UnlinkFacebookInstantGame request.
@@ -1143,7 +1141,7 @@ func (req *UnlinkFacebookInstantGameRequest) WithVars(vars map[string]string) *U
 
 // Do executes the request against the context and client.
 func (req *UnlinkFacebookInstantGameRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/unlink/facebookinstantgame", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/unlink/facebookinstantgame", true, nil, req, nil)
 }
 
 // UnlinkGameCenterRequest is a UnlinkGameCenter request.
@@ -1200,7 +1198,7 @@ func (req *UnlinkGameCenterRequest) WithVars(vars map[string]string) *UnlinkGame
 
 // Do executes the request against the context and client.
 func (req *UnlinkGameCenterRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/unlink/gamecenter", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/unlink/gamecenter", true, nil, req, nil)
 }
 
 // UnlinkGoogleRequest is a UnlinkGoogle request.
@@ -1227,7 +1225,7 @@ func (req *UnlinkGoogleRequest) WithVars(vars map[string]string) *UnlinkGoogleRe
 
 // Do executes the request against the context and client.
 func (req *UnlinkGoogleRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/unlink/google", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/unlink/google", true, nil, req, nil)
 }
 
 // UnlinkSteamRequest is a UnlinkSteam request.
@@ -1254,7 +1252,7 @@ func (req *UnlinkSteamRequest) WithVars(vars map[string]string) *UnlinkSteamRequ
 
 // Do executes the request against the context and client.
 func (req *UnlinkSteamRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/account/unlink/steam", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/account/unlink/steam", true, nil, req, nil)
 }
 
 // ListChannelMessagesRequest is a ListChannelMessages request.
@@ -1303,7 +1301,7 @@ func (req *ListChannelMessagesRequest) Do(ctx context.Context, cl *Client) (*Lis
 		query.Set("cursor", req.Cursor)
 	}
 	res := new(ListChannelMessagesResponse)
-	if err := cl.Do(ctx, "GET", "v2/channel/"+req.ChannelId, query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/channel/"+req.ChannelId, true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -1348,7 +1346,7 @@ func (req *EventRequest) WithExternal(external bool) *EventRequest {
 
 // Do executes the request against the context and client.
 func (req *EventRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/event", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/event", true, nil, req, nil)
 }
 
 // ListFriendsRequest is a ListFriends request.
@@ -1396,7 +1394,7 @@ func (req *ListFriendsRequest) Do(ctx context.Context, cl *Client) (*ListFriends
 		query.Set("cursor", req.Cursor)
 	}
 	res := new(ListFriendsResponse)
-	if err := cl.Do(ctx, "GET", "v2/friend", query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/friend", true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -1429,7 +1427,7 @@ func (req *DeleteFriendsRequest) WithUsernames(usernames ...string) *DeleteFrien
 
 // Do executes the request against the context and client.
 func (req *DeleteFriendsRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "DELETE", "v2/friend", nil, req, nil)
+	return cl.Do(ctx, "DELETE", "v2/friend", true, nil, req, nil)
 }
 
 // AddFriendsRequest is a AddFriends request.
@@ -1456,7 +1454,7 @@ func (req *AddFriendsRequest) WithUsernames(usernames ...string) *AddFriendsRequ
 
 // Do executes the request against the context and client.
 func (req *AddFriendsRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/friend", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/friend", true, nil, req, nil)
 }
 
 // BlockFriendsRequest is a BlockFriends request.
@@ -1483,7 +1481,7 @@ func (req *BlockFriendsRequest) WithUsernames(usernames ...string) *BlockFriends
 
 // Do executes the request against the context and client.
 func (req *BlockFriendsRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/friend/block", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/friend/block", true, nil, req, nil)
 }
 
 // ImportFacebookFriendsRequest is a ImportFacebookFriends request.
@@ -1524,7 +1522,7 @@ func (req *ImportFacebookFriendsRequest) Do(ctx context.Context, cl *Client) err
 	if req.Reset_ != nil {
 		query.Set("reset", strconv.FormatBool(req.Reset_.Value))
 	}
-	return cl.Do(ctx, "POST", "v2/friend/facebook", query, req.Account, nil)
+	return cl.Do(ctx, "POST", "v2/friend/facebook", true, query, req.Account, nil)
 }
 
 // ImportSteamFriendsRequest is a ImportSteamFriends request.
@@ -1565,7 +1563,7 @@ func (req *ImportSteamFriendsRequest) Do(ctx context.Context, cl *Client) error 
 	if req.Reset_ != nil {
 		query.Set("reset", strconv.FormatBool(req.Reset_.Value))
 	}
-	return cl.Do(ctx, "POST", "v2/friend/steam", query, req.Account, nil)
+	return cl.Do(ctx, "POST", "v2/friend/steam", true, query, req.Account, nil)
 }
 
 // ListGroupsRequest is a ListGroups request.
@@ -1636,7 +1634,7 @@ func (req *ListGroupsRequest) Do(ctx context.Context, cl *Client) (*ListGroupsRe
 		query.Set("open", strconv.FormatBool(req.Open.Value))
 	}
 	res := new(ListGroupsResponse)
-	if err := cl.Do(ctx, "GET", "v2/group", query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/group", true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -1694,7 +1692,7 @@ func (req *CreateGroupRequest) WithMaxCount(maxCount int) *CreateGroupRequest {
 // Do executes the request against the context and client.
 func (req *CreateGroupRequest) Do(ctx context.Context, cl *Client) (*nkapi.Group, error) {
 	res := new(nkapi.Group)
-	if err := cl.Do(ctx, "POST", "v2/group", nil, req, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/group", true, nil, req, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -1716,7 +1714,7 @@ func DeleteGroup(groupId string) *DeleteGroupRequest {
 
 // Do executes the request against the context and client.
 func (req *DeleteGroupRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "DELETE", "v2/group/"+req.GroupId, nil, nil, nil)
+	return cl.Do(ctx, "DELETE", "v2/group/"+req.GroupId, true, nil, nil, nil)
 }
 
 // UpdateGroupRequest is a UpdateGroup request.
@@ -1765,7 +1763,7 @@ func (req *UpdateGroupRequest) WithOpen(open bool) *UpdateGroupRequest {
 
 // Do executes the request against the context and client.
 func (req *UpdateGroupRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "PUT", "v2/group/"+req.GroupId, nil, req, nil)
+	return cl.Do(ctx, "PUT", "v2/group/"+req.GroupId, true, nil, req, nil)
 }
 
 // AddGroupUsersRequest is a AddGroupUsers request.
@@ -1790,7 +1788,7 @@ func (req *AddGroupUsersRequest) WithUserIds(userIds ...string) *AddGroupUsersRe
 
 // Do executes the request against the context and client.
 func (req *AddGroupUsersRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/add", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/add", true, nil, req, nil)
 }
 
 // BanGroupUsersRequest is a BanGroupUsers request.
@@ -1815,7 +1813,7 @@ func (req *BanGroupUsersRequest) WithUserIds(userIds ...string) *BanGroupUsersRe
 
 // Do executes the request against the context and client.
 func (req *BanGroupUsersRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/ban", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/ban", true, nil, req, nil)
 }
 
 // DemoteGroupUsersRequest is a DemoteGroupUsers request.
@@ -1840,7 +1838,7 @@ func (req *DemoteGroupUsersRequest) WithUserIds(userIds ...string) *DemoteGroupU
 
 // Do executes the request against the context and client.
 func (req *DemoteGroupUsersRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/demote", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/demote", true, nil, req, nil)
 }
 
 // JoinGroupRequest is a JoinGroup request.
@@ -1859,7 +1857,7 @@ func JoinGroup(groupId string) *JoinGroupRequest {
 
 // Do executes the request against the context and client.
 func (req *JoinGroupRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/join", nil, nil, nil)
+	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/join", true, nil, nil, nil)
 }
 
 // KickGroupUsersRequest is a KickGroupUsers request.
@@ -1884,7 +1882,7 @@ func (req *KickGroupUsersRequest) WithUserIds(userIds ...string) *KickGroupUsers
 
 // Do executes the request against the context and client.
 func (req *KickGroupUsersRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/kick", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/kick", true, nil, req, nil)
 }
 
 // LeaveGroupRequest is a LeaveGroup request.
@@ -1903,7 +1901,7 @@ func LeaveGroup(groupId string) *LeaveGroupRequest {
 
 // Do executes the request against the context and client.
 func (req *LeaveGroupRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/leave", nil, nil, nil)
+	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/leave", true, nil, nil, nil)
 }
 
 // PromoteGroupUsersRequest is a PromoteGroupUsers request.
@@ -1928,7 +1926,7 @@ func (req *PromoteGroupUsersRequest) WithUserIds(userIds ...string) *PromoteGrou
 
 // Do executes the request against the context and client.
 func (req *PromoteGroupUsersRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/promote", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/group/"+req.GroupId+"/promote", true, nil, req, nil)
 }
 
 // ListGroupUsersRequest is a ListGroupUsers request.
@@ -1977,7 +1975,7 @@ func (req *ListGroupUsersRequest) Do(ctx context.Context, cl *Client) (*ListGrou
 		query.Set("cursor", req.Cursor)
 	}
 	res := new(ListGroupUsersResponse)
-	if err := cl.Do(ctx, "GET", "v2/group/"+req.GroupId+"/user", query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/group/"+req.GroupId+"/user", true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2014,7 +2012,7 @@ func (req *ValidatePurchaseAppleRequest) WithPersist(persist bool) *ValidatePurc
 // Do executes the request against the context and client.
 func (req *ValidatePurchaseAppleRequest) Do(ctx context.Context, cl *Client) (*ValidatePurchaseResponse, error) {
 	res := new(ValidatePurchaseResponse)
-	if err := cl.Do(ctx, "POST", "v2/iap/purchase/apple", nil, req, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/iap/purchase/apple", true, nil, req, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2045,7 +2043,7 @@ func (req *ValidatePurchaseGoogleRequest) WithPersist(persist bool) *ValidatePur
 // Do executes the request against the context and client.
 func (req *ValidatePurchaseGoogleRequest) Do(ctx context.Context, cl *Client) (*ValidatePurchaseResponse, error) {
 	res := new(ValidatePurchaseResponse)
-	if err := cl.Do(ctx, "POST", "v2/iap/purchase/google", nil, req, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/iap/purchase/google", true, nil, req, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2082,7 +2080,7 @@ func (req *ValidatePurchaseHuaweiRequest) WithPersist(persist bool) *ValidatePur
 // Do executes the request against the context and client.
 func (req *ValidatePurchaseHuaweiRequest) Do(ctx context.Context, cl *Client) (*ValidatePurchaseResponse, error) {
 	res := new(ValidatePurchaseResponse)
-	if err := cl.Do(ctx, "POST", "v2/iap/purchase/huawei", nil, req, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/iap/purchase/huawei", true, nil, req, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2123,7 +2121,7 @@ func (req *ListSubscriptionsRequest) Do(ctx context.Context, cl *Client) (*ListS
 		query.Set("cursor", req.Cursor)
 	}
 	res := new(ListSubscriptionsResponse)
-	if err := cl.Do(ctx, "GET", "v2/iap/subscription", nil, req, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/iap/subscription", true, nil, req, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2161,7 +2159,7 @@ func (req *ValidateSubscriptionAppleRequest) WithPersist(persist bool) *Validate
 // Do executes the request against the context and client.
 func (req *ValidateSubscriptionAppleRequest) Do(ctx context.Context, cl *Client) (*ValidateSubscriptionResponse, error) {
 	res := new(ValidateSubscriptionResponse)
-	if err := cl.Do(ctx, "POST", "v2/iap/subscription/apple", nil, req, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/iap/subscription/apple", true, nil, req, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2193,7 +2191,7 @@ func (req *ValidateSubscriptionGoogleRequest) WithPersist(persist bool) *Validat
 // Do executes the request against the context and client.
 func (req *ValidateSubscriptionGoogleRequest) Do(ctx context.Context, cl *Client) (*ValidateSubscriptionResponse, error) {
 	res := new(ValidateSubscriptionResponse)
-	if err := cl.Do(ctx, "POST", "v2/iap/subscription/google", nil, req, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/iap/subscription/google", true, nil, req, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2282,7 +2280,7 @@ func (req *ListLeaderboardRecordsRequest) Do(ctx context.Context, cl *Client) (*
 		query.Set("expiry", strconv.FormatInt(int64(req.Expiry.Value), 10))
 	}
 	res := new(ListLeaderboardRecordsResponse)
-	if err := cl.Do(ctx, "GET", "v2/leaderboard/"+req.LeaderboardId, query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/leaderboard/"+req.LeaderboardId, true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2307,7 +2305,7 @@ func DeleteLeaderboardRecord(leaderboardId string) *DeleteLeaderboardRecordReque
 
 // Do executes the request against the context and client.
 func (req *DeleteLeaderboardRecordRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "DELETE", "v2/leaderboard/"+req.LeaderboardId, nil, nil, nil)
+	return cl.Do(ctx, "DELETE", "v2/leaderboard/"+req.LeaderboardId, true, nil, nil, nil)
 }
 
 // Operator is the operator.
@@ -2364,7 +2362,7 @@ func (req *WriteLeaderboardRecordRequest) WithOperator(operator Operator) *Write
 // Do executes the request against the context and client.
 func (req *WriteLeaderboardRecordRequest) Do(ctx context.Context, cl *Client) (*WriteLeaderboardRecordResponse, error) {
 	res := new(WriteLeaderboardRecordResponse)
-	if err := cl.Do(ctx, "POST", "v2/leaderboard/"+req.LeaderboardId, nil, req.Record, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/leaderboard/"+req.LeaderboardId, true, nil, req.Record, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2416,7 +2414,7 @@ func (req *ListLeaderboardRecordsAroundOwnerRequest) Do(ctx context.Context, cl 
 		}
 	*/
 	res := new(ListLeaderboardRecordsAroundOwnerResponse)
-	if err := cl.Do(ctx, "GET", "v2/leaderboard/"+req.LeaderboardId+"/owner/"+req.OwnerId, query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/leaderboard/"+req.LeaderboardId+"/owner/"+req.OwnerId, true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2497,7 +2495,7 @@ func (req *ListMatchesRequest) Do(ctx context.Context, cl *Client) (*ListMatches
 		query.Set("query", req.Query.Value)
 	}
 	res := new(ListMatchesResponse)
-	if err := cl.Do(ctx, "GET", "v2/match", query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/match", true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2542,7 +2540,7 @@ func (req *ListNotificationsRequest) Do(ctx context.Context, cl *Client) (*ListN
 		query.Set("cacheableCursor", req.CacheableCursor)
 	}
 	res := new(ListNotificationsResponse)
-	if err := cl.Do(ctx, "GET", "v2/notifications", query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/notifications", true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2569,7 +2567,7 @@ func (req *DeleteNotificationsRequest) WithIds(ids ...string) *DeleteNotificatio
 
 // Do executes the request against the context and client.
 func (req *DeleteNotificationsRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "DELETE", "v2/notification", nil, req, nil)
+	return cl.Do(ctx, "DELETE", "v2/notification", true, nil, req, nil)
 }
 
 // RpcRequest is a Rpc request.
@@ -2605,7 +2603,7 @@ func (req *RpcRequest) Do(ctx context.Context, cl *Client, v interface{}) error 
 	if req.httpKey != "" {
 		query.Set("http_key", req.httpKey)
 	}
-	return cl.DoRaw(ctx, "POST", "v2/rpc/"+req.id, query, req.payload, v)
+	return cl.Do(ctx, "POST", "v2/rpc/"+req.id, req.httpKey != "", query, req.payload, v)
 }
 
 // SessionLogoutRequest is a SessionLogout request.
@@ -2632,7 +2630,7 @@ func (req *SessionLogoutRequest) WithRefreshToken(refreshToken string) *SessionL
 
 // Do executes the request against the context and client.
 func (req *SessionLogoutRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/session/logout", nil, req, nil)
+	return cl.Do(ctx, "POST", "v2/session/logout", true, nil, req, nil)
 }
 
 // WriteStorageObject is the write storage object.
@@ -2661,7 +2659,7 @@ func (req *ReadStorageObjectsRequest) WithObjectId(collection, key, userId strin
 // Do executes the request against the context and client.
 func (req *ReadStorageObjectsRequest) Do(ctx context.Context, cl *Client) (*ReadStorageObjectsResponse, error) {
 	res := new(ReadStorageObjectsResponse)
-	if err := cl.Do(ctx, "POST", "v2/storage", nil, req, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/storage", true, nil, req, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2689,7 +2687,7 @@ func (req *WriteStorageObjectsRequest) WithObject(object *WriteStorageObject) *W
 // Do executes the request against the context and client.
 func (req *WriteStorageObjectsRequest) Do(ctx context.Context, cl *Client) (*WriteStorageObjectsResponse, error) {
 	res := new(WriteStorageObjectsResponse)
-	if err := cl.Do(ctx, "PUT", "v2/storage", nil, req, res); err != nil {
+	if err := cl.Do(ctx, "PUT", "v2/storage", true, nil, req, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2720,7 +2718,7 @@ func (req *DeleteStorageObjectsRequest) WithObjectId(collection, key, version st
 
 // Do executes the request against the context and client.
 func (req *DeleteStorageObjectsRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "PUT", "v2/storage/delete", nil, req, nil)
+	return cl.Do(ctx, "PUT", "v2/storage/delete", true, nil, req, nil)
 }
 
 // ListStorageObjectsRequest is a ListStorageObjects request.
@@ -2769,7 +2767,7 @@ func (req *ListStorageObjectsRequest) Do(ctx context.Context, cl *Client) (*List
 		query.Set("cursor", req.Cursor)
 	}
 	res := new(ListStorageObjectsResponse)
-	if err := cl.Do(ctx, "GET", "v2/storage/"+req.Collection, query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/storage/"+req.Collection, true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2850,7 +2848,7 @@ func (req *ListTournamentsRequest) Do(ctx context.Context, cl *Client) (*ListTou
 		query.Set("cursor", req.Cursor)
 	}
 	res := new(ListTournamentsResponse)
-	if err := cl.Do(ctx, "GET", "v2/tournament", query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/tournament", true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2914,7 +2912,7 @@ func (req *ListTournamentRecordsRequest) Do(ctx context.Context, cl *Client) (*L
 		query.Set("expiry", strconv.FormatInt(int64(req.Expiry.Value), 10))
 	}
 	res := new(ListTournamentRecordsResponse)
-	if err := cl.Do(ctx, "GET", "v2/tournament/"+req.TournamentId, query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/tournament/"+req.TournamentId, true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2965,7 +2963,7 @@ func (req *WriteTournamentRecordRequest) WithOperator(operator Operator) *WriteT
 // Do executes the request against the context and client.
 func (req *WriteTournamentRecordRequest) Do(ctx context.Context, cl *Client) (*WriteTournamentRecordResponse, error) {
 	res := new(WriteTournamentRecordResponse)
-	if err := cl.Do(ctx, "POST", "v2/tournament/"+req.TournamentId, nil, req.Record, res); err != nil {
+	if err := cl.Do(ctx, "POST", "v2/tournament/"+req.TournamentId, true, nil, req.Record, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2990,7 +2988,7 @@ func JoinTournament(tournamentId string) *JoinTournamentRequest {
 
 // Do executes the request against the context and client.
 func (req *JoinTournamentRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "POST", "v2/tournament/"+req.TournamentId+"/join", nil, nil, nil)
+	return cl.Do(ctx, "POST", "v2/tournament/"+req.TournamentId+"/join", true, nil, nil, nil)
 }
 
 // ListTournamentRecordsAroundOwnerRequest is a ListTournamentRecordsAroundOwner request.
@@ -3036,7 +3034,7 @@ func (req *ListTournamentRecordsAroundOwnerRequest) Do(ctx context.Context, cl *
 		}
 	*/
 	res := new(ListTournamentRecordsAroundOwnerResponse)
-	if err := cl.Do(ctx, "GET", "v2/tournament/"+req.TournamentId+"/owner/"+req.OwnerId, query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/tournament/"+req.TournamentId+"/owner/"+req.OwnerId, true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -3086,7 +3084,7 @@ func (req *UsersRequest) Do(ctx context.Context, cl *Client) (*UsersResponse, er
 		query.Set("facebookIds", strings.Join(req.FacebookIds, ","))
 	}
 	res := new(UsersResponse)
-	if err := cl.Do(ctx, "GET", "v2/user", query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/user", true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -3140,7 +3138,7 @@ func (req *ListUserGroupsRequest) Do(ctx context.Context, cl *Client) (*ListUser
 		query.Set("cursor", req.Cursor)
 	}
 	res := new(ListUserGroupsResponse)
-	if err := cl.Do(ctx, "GET", "v2/user/"+req.UserId+"/group", query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/user/"+req.UserId+"/group", true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil

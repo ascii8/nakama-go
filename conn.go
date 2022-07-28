@@ -5,36 +5,38 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
-	"strings"
 
+	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
 )
 
-// DefaultWsPath is the default websocket path.
-var DefaultWsPath = "/ws"
-
-// Conn wraps a websocket connection.
-type Conn struct {
-	cl     *http.Client
-	url    string
-	query  url.Values
-	header http.Header
-	conn   *websocket.Conn
+// Handler is the interface for connection handlers.
+type Handler interface {
+	HttpClient() *http.Client
+	Token() (string, string, error)
+	Query() url.Values
+	Marshal(proto.Message) ([]byte, error)
+	Unmarshal([]byte, bool, proto.Message) error
 }
 
-// Dial creates a new websocket connection.
-func Dial(ctx context.Context, opts ...DialOption) (*Conn, error) {
+// Conn is a nakama realtime websocket connection.
+type Conn struct {
+	url  string
+	conn *websocket.Conn
+}
+
+// NewConn creates a new nakama realtime websocket connection.
+func NewConn(ctx context.Context, h Handler, opts ...ConnOption) (*Conn, error) {
 	conn := new(Conn)
 	for _, o := range opts {
-		if err := o(conn); err != nil {
-			return nil, err
-		}
+		o(conn)
 	}
-	urlstr := conn.BuildUrl()
+	urlstr := conn.url
+	if q := h.Query(); len(q) != 0 {
+		urlstr += "?" + q.Encode()
+	}
 	c, _, err := websocket.Dial(ctx, urlstr, &websocket.DialOptions{
-		HTTPClient: conn.cl,
-		HTTPHeader: conn.header,
+		HTTPClient: h.HttpClient(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to dial %s: %w", urlstr, err)
@@ -42,112 +44,36 @@ func Dial(ctx context.Context, opts ...DialOption) (*Conn, error) {
 	return &Conn{conn: c}, nil
 }
 
-// BuildUrl builds the url.
-func (conn *Conn) BuildUrl() string {
-	urlstr := conn.url
-	if len(conn.query) != 0 {
-		urlstr += "?" + conn.query.Encode()
-	}
-	return urlstr
-}
-
 // Close closes the websocket connection.
 func (conn *Conn) Close() error {
 	return conn.conn.Close(websocket.StatusGoingAway, "going away")
 }
 
-// DialOption is a nakama websocket dial option.
-type DialOption func(*Conn) error
+// ConnOption is a nakama realtime websocket connection option.
+type ConnOption func(*Conn)
 
-// FromClient is a nakama websocket dial option to copy settings from a nakama
-// client.
-func FromClient(cl *Client) DialOption {
-	return func(conn *Conn) error {
-		u, err := url.Parse(cl.url)
-		switch {
-		case err != nil:
-			return err
-		case cl.serverKey != "":
-			u.User = url.UserPassword(cl.serverKey, "")
-		case cl.username != "":
-			u.User = url.UserPassword(cl.username, cl.password)
-		}
-		switch strings.ToLower(u.Scheme) {
-		case "http":
-			u.Scheme = "ws"
-		case "https":
-			u.Scheme = "wss"
-		default:
-			return fmt.Errorf("invalid scheme %q", u.Scheme)
-		}
-		conn.url = u.String() + DefaultWsPath
-		conn.cl = cl.cl
-		if cl.token != "" {
-			conn.header = make(http.Header)
-			conn.header.Add("Authorization", "Bearer "+cl.token)
-		}
-		if cl.httpKey != "" {
-			if conn.query == nil {
-				conn.query = url.Values{}
-			}
-			conn.query.Set("http_key", cl.httpKey)
-		}
-		return nil
+/*
+	u, err := url.Parse(cl.url)
+	switch {
+	case err != nil:
+		return err
 	}
-}
-
-// WithDialUrl is a nakama websocket dial option to set the url.
-func WithDialUrl(url string) DialOption {
-	return func(conn *Conn) error {
-		conn.url = url
-		return nil
+	scheme := "ws"
+	switch strings.ToLower(u.Scheme) {
+	case "http":
+	case "https":
+		scheme = "wss"
+	default:
+		return fmt.Errorf("invalid scheme %q", u.Scheme)
 	}
-}
+	conn.cl = cl.cl
+	conn.url = scheme + "://" + u.Host + DefaultWsPath
+	conn.query.Set("token", cl.token)
+*/
 
-// WithFormat is a nakama websocket dial option to set the http_key on the dial
-// url (<url>?http_key=<httpKey>).
-func WithDialHttpKey(httpKey string) DialOption {
-	return func(conn *Conn) error {
-		if conn.query == nil {
-			conn.query = url.Values{}
-		}
-		conn.query.Set("http_key", httpKey)
-		return nil
-	}
-}
-
-// WithDialToken is a nakama websocket dial option to set the token on the dial
-// url (<url>?token=<token>).
-func WithDialToken(token string) DialOption {
-	return func(conn *Conn) error {
-		if conn.query == nil {
-			conn.query = url.Values{}
-		}
-		conn.query.Set("token", token)
-		return nil
-	}
-}
-
-// WithDialFormat is a nakama websocket dial option to set the format on the
-// dial url (<url>?format=<format>).
-func WithDialFormat(format string) DialOption {
-	return func(conn *Conn) error {
-		if conn.query == nil {
-			conn.query = url.Values{}
-		}
-		conn.query.Set("format", format)
-		return nil
-	}
-}
-
-// WithDialCreateStatus is a nakama websocket dial option to set the status on
-// the dial url (<url>?status=<true/false>).
-func WithDialCreateStatus(create bool) DialOption {
-	return func(conn *Conn) error {
-		if conn.query == nil {
-			conn.query = url.Values{}
-		}
-		conn.query.Set("status", strconv.FormatBool(create))
-		return nil
+// WithConnUrl is a nakama websocket dial option to set the dial url.
+func WithConnUrl(urlstr string) ConnOption {
+	return func(conn *Conn) {
+		conn.url = urlstr
 	}
 }
