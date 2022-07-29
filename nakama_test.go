@@ -103,6 +103,21 @@ func TestPing(t *testing.T) {
 	if len(conn.l) != 0 {
 		t.Errorf("expected len(conn.l) == 0, got: %d", len(conn.l))
 	}
+	errc := make(chan error, 1)
+	conn.PingAsync(ctx, func(err error) {
+		defer close(errc)
+		errc <- err
+	})
+	select {
+	case <-ctx.Done():
+	case err := <-errc:
+		if err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+	}
+	if len(conn.l) != 0 {
+		t.Errorf("expected len(conn.l) == 0, got: %d", len(conn.l))
+	}
 }
 
 func newClient(ctx context.Context, t *testing.T, addProxyLogger bool, opts ...Option) *Client {
