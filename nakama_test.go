@@ -91,24 +91,18 @@ func TestAuthenticateDevice(t *testing.T) {
 	createAccount(ctx, t, cl)
 }
 
-func TestWebsocket(t *testing.T) {
+func TestPing(t *testing.T) {
 	ctx, cancel := context.WithCancel(globalCtx)
 	defer cancel()
 	cl := newClient(ctx, t, true, WithServerKey(nkTest.ServerKey()))
-	createAccount(ctx, t, cl)
-	conn, err := cl.NewConn(ctx)
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
+	conn := createAccountAndConn(ctx, t, cl)
 	defer conn.Close()
-	select {
-	case <-ctx.Done():
-	case <-time.After(10 * time.Second):
+	if err := conn.Ping(ctx); err != nil {
+		t.Errorf("expected no error, got: %v", err)
 	}
-}
-
-type rewards struct {
-	Rewards int64 `json:"rewards,omitempty"`
+	if len(conn.l) != 0 {
+		t.Errorf("expected len(conn.l) == 0, got: %d", len(conn.l))
+	}
 }
 
 func newClient(ctx context.Context, t *testing.T, addProxyLogger bool, opts ...Option) *Client {
@@ -163,4 +157,17 @@ func createAccount(ctx context.Context, t *testing.T, cl *Client) {
 	if i == -1 {
 		t.Fatalf("expected accountRes.Devices to contain %s", deviceId)
 	}
+}
+
+func createAccountAndConn(ctx context.Context, t *testing.T, cl *Client, opts ...ConnOption) *Conn {
+	createAccount(ctx, t, cl)
+	conn, err := cl.NewConn(ctx, append([]ConnOption{WithConnFormat("json")}, opts...)...)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	return conn
+}
+
+type rewards struct {
+	Rewards int64 `json:"rewards,omitempty"`
 }

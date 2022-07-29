@@ -13,6 +13,68 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+/*
+// nkapi.StoreProvider values.
+const (
+	// Apple App Store
+	StoreProviderAppleAppStore = nkapi.StoreProvider_APPLE_APP_STORE
+	// Google Play Store
+	StoreProviderGooglePlayStore = nkapi.StoreProvider_GOOGLE_PLAY_STORE
+	// Huawei App Gallery
+	StoreProviderHuaweiAppGallery = nkapi.StoreProvider_HUAWEI_APP_GALLERY
+)
+*/
+
+/*
+// nkapi.StoreEnvironment values.
+const (
+	// Unknown environment.
+	StoreEnvironmentUnknown = nkapi.StoreEnvironment_UNKNOWN
+	// Sandbox/test environment.
+	StoreEnvironmentSandbox = nkapi.StoreEnvironment_SANDBOX
+	// Production environment.
+	StoreEnvironmentProduction = nkapi.StoreEnvironment_PRODUCTION
+)
+*/
+
+// nkapi.Operator values.
+const (
+	// Do not override the leaderboard operator.
+	OperatorNoOverride = nkapi.Operator_NO_OVERRIDE
+	// Override the leaderboard operator with BEST.
+	OperatorBest = nkapi.Operator_BEST
+	// Override the leaderboard operator with SET.
+	OperatorSet = nkapi.Operator_SET
+	// Override the leaderboard operator with INCREMENT.
+	OperatorIncrement = nkapi.Operator_INCREMENT
+	// Override the leaderboard operator with DECREMENT.
+	OperatorDecrement = nkapi.Operator_DECREMENT
+)
+
+// nkapi.Friend values.
+const (
+	// The user is a friend of the current user.
+	FriendFriend = nkapi.Friend_FRIEND
+	// The current user ha// The current user has sent an invite to the user.
+	FriendInviteSent = nkapi.Friend_INVITE_SENT
+	// The current user ha// The current user has received an invite from this user.
+	FriendInviteReceived = nkapi.Friend_INVITE_RECEIVED
+	// The current user ha// The current user has blocked this user.
+	FriendBlocked = nkapi.Friend_BLOCKED
+)
+
+// nkapi.GroupUserList_GroupUser_State values.
+const (
+	// The user is a superadmin with full control of the group.
+	UserStatusSuperadmin = nkapi.GroupUserList_GroupUser_SUPERADMIN
+	// The user is an admin with additional privileges.
+	UserStatusAdmin = nkapi.GroupUserList_GroupUser_ADMIN
+	// The user is a regular member.
+	UserStatusMember = nkapi.GroupUserList_GroupUser_MEMBER
+	// The user has requested to join the group
+	UserStatusJoinRequest = nkapi.GroupUserList_GroupUser_JOIN_REQUEST
+)
+
 // HealthcheckRequest is a healthcheck request.
 type HealthcheckRequest struct{}
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -61,13 +62,21 @@ func New(opts ...Option) *Client {
 	return cl
 }
 
+func (cl *Client) Logf(s string, v ...interface{}) {
+	log.Printf(s, v...)
+}
+
+func (cl *Client) Errf(s string, v ...interface{}) {
+	log.Printf("ERROR: "+s, v...)
+}
+
 // HttpClient satisfies the handler interface.
 func (cl *Client) HttpClient() *http.Client {
 	return cl.cl
 }
 
-// WebsocketURL satisfies the Handler interface.
-func (cl *Client) WebsocketURL() (string, error) {
+// SocketURL satisfies the Handler interface.
+func (cl *Client) SocketURL() (string, error) {
 	u, err := url.Parse(cl.url)
 	if err != nil {
 		return "", err
@@ -212,6 +221,41 @@ func (cl *Client) Unmarshal(r io.Reader, v interface{}) error {
 	dec.DisallowUnknownFields()
 	return dec.Decode(v)
 }
+
+/*
+// MarshalBytes marshals v. If v is a proto.Message, will use Protobuf's
+// google.golang.org/protobuf/encoding/protojson package to encode the message,
+// otherwise uses Go's encoding/json package.
+func (cl *Client) MarshalBytes(v interface{}) ([]byte, error) {
+	// protojson encode
+	if msg, ok := v.(proto.Message); ok {
+		if msg != nil {
+			return cl.marshaler.Marshal(msg)
+		}
+		return nil, nil
+	}
+	// json encode
+	buf := new(bytes.Buffer)
+	if err := json.NewEncoder(buf).Encode(v); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// UnmarshalBytes unmarshals r to v. If v is a proto.Message, will use
+// Protobuf's google.golang.org/protobuf/encoding/protojson package to decode
+// the message, otherwise uses Go's encoding/json package.
+func (cl *Client) UnmarshalBytes(buf []byte, v interface{}) error {
+	// protojson decode
+	if msg, ok := v.(proto.Message); ok {
+		return cl.unmarshaler.Unmarshal(buf, msg)
+	}
+	// json decode
+	dec := json.NewDecoder(bytes.NewReader(buf))
+	dec.DisallowUnknownFields()
+	return dec.Decode(v)
+}
+*/
 
 // SessionStart starts a session.
 func (cl *Client) SessionStart(session *SessionResponse) error {
@@ -442,7 +486,7 @@ func (cl *Client) AuthenticateSteam(ctx context.Context, create, sync bool, toke
 // NewConn creates a new a nakama realtime websocket connection, and runs until
 // the context is closed.
 func (cl *Client) NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
-	return NewConn(ctx, cl, opts...)
+	return NewConn(ctx, append([]ConnOption{WithConnHandler(cl)}, opts...)...)
 }
 
 // Option is a nakama client option.

@@ -3,7 +3,7 @@ module github.com/ascii8/nakama-go
 go 1.18
 
 require (
-	github.com/ascii8/nktest v0.3.1
+	github.com/ascii8/nktest v0.3.3
 	github.com/google/uuid v1.3.0
 	github.com/heroiclabs/nakama-common v1.23.0
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
