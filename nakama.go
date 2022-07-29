@@ -23,7 +23,7 @@ func Healthcheck() *HealthcheckRequest {
 
 // Do executes the healthcheck request against the context and client.
 func (req *HealthcheckRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "GET", "healthcheck", true, nil, nil, nil)
+	return cl.Do(ctx, "GET", "healthcheck", false, nil, nil, nil)
 }
 
 // AccountRequest is a account request.
@@ -2603,7 +2603,7 @@ func (req *RpcRequest) Do(ctx context.Context, cl *Client, v interface{}) error 
 	if req.httpKey != "" {
 		query.Set("http_key", req.httpKey)
 	}
-	return cl.Do(ctx, "POST", "v2/rpc/"+req.id, req.httpKey != "", query, req.payload, v)
+	return cl.Do(ctx, "POST", "v2/rpc/"+req.id, req.httpKey == "", query, req.payload, v)
 }
 
 // SessionLogoutRequest is a SessionLogout request.

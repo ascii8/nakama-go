@@ -3,6 +3,7 @@ package nakama
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -93,7 +94,7 @@ func TestAuthenticateDevice(t *testing.T) {
 func TestWebsocket(t *testing.T) {
 	ctx, cancel := context.WithCancel(globalCtx)
 	defer cancel()
-	cl := newClient(ctx, t, false, WithServerKey(nkTest.ServerKey()))
+	cl := newClient(ctx, t, true, WithServerKey(nkTest.ServerKey()))
 	createAccount(ctx, t, cl)
 	conn, err := cl.NewConn(ctx)
 	if err != nil {
@@ -102,7 +103,7 @@ func TestWebsocket(t *testing.T) {
 	defer conn.Close()
 	select {
 	case <-ctx.Done():
-	case <-time.After(3 * time.Minute):
+	case <-time.After(10 * time.Second):
 	}
 }
 
@@ -123,11 +124,18 @@ func newClient(ctx context.Context, t *testing.T, addProxyLogger bool, opts ...O
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	t.Logf("url: %s", urlstr)
-	return New(append([]Option{
+	var transport http.RoundTripper = &http.Transport{
+		DisableCompression: true,
+	}
+	if !addProxyLogger {
+		transport = logger.Transport(nil)
+	}
+	opts = append([]Option{
 		WithURL(urlstr),
-		WithTransport(logger.Transport(nil)),
 		WithServerKey(nkTest.ServerKey()),
-	}, opts...)...)
+		WithTransport(transport),
+	}, opts...)
+	return New(opts...)
 }
 
 func createAccount(ctx context.Context, t *testing.T, cl *Client) {
