@@ -1360,7 +1360,7 @@ func ParseTokenExpiry(tokenstr, typ string, grace time.Duration) (time.Time, tim
 	// decode
 	buf, err := base64.RawStdEncoding.DecodeString(token[1])
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("invalid %s token encoding: %w", err, typ)
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid %s token encoding: %w", typ, err)
 	}
 	// unmarshal
 	var v struct {

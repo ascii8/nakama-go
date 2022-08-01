@@ -66,16 +66,20 @@ func TestHealthcheck(t *testing.T) {
 }
 
 func TestRpc(t *testing.T) {
+	const amount int64 = 1000
 	ctx, cancel := context.WithCancel(globalCtx)
 	defer cancel()
 	cl := newClient(ctx, t, false)
 	var res rewards
-	amount := int64(1000)
-	if err := Rpc("dailyRewards").
-		WithHttpKey(nkTest.Name()).
-		WithPayload(rewards{
+	req := Rpc(
+		"dailyRewards",
+		rewards{
 			Rewards: amount,
-		}).Do(ctx, cl, &res); err != nil {
+		},
+		&res,
+	).
+		WithHttpKey(nkTest.Name())
+	if err := req.Do(ctx, cl); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	t.Logf("rewards: %d", res.Rewards)
@@ -161,7 +165,7 @@ func newClient(ctx context.Context, t *testing.T, addProxyLogger bool, opts ...O
 func createAccount(ctx context.Context, t *testing.T, cl *Client) {
 	deviceId := uuid.New().String()
 	t.Logf("registering: %s", deviceId)
-	if err := cl.AuthenticateDevice(ctx, true, deviceId, ""); err != nil {
+	if err := cl.AuthenticateDevice(ctx, deviceId, true, ""); err != nil {
 		t.Fatalf("expected no error: got: %v", err)
 	}
 	expiry := cl.SessionExpiry()
