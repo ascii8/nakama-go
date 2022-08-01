@@ -120,6 +120,17 @@ func TestPing(t *testing.T) {
 	}
 }
 
+func TestRpcRealtime(t *testing.T) {
+}
+
+func TestChannels(t *testing.T) {
+	ctx, cancel := context.WithCancel(globalCtx)
+	defer cancel()
+	cl := newClient(ctx, t, true, WithServerKey(nkTest.ServerKey()))
+	conn := createAccountAndConn(ctx, t, cl)
+	defer conn.Close()
+}
+
 func newClient(ctx context.Context, t *testing.T, addProxyLogger bool, opts ...Option) *Client {
 	local := nkTest.HttpLocal()
 	t.Logf("real: %s", local)
