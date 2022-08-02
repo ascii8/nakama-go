@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package apitest.proto;
+
+option go_package = "github.com/ascii8/nakama-go/apitest/proto";
+
+message Test {
+  // AString is a test field.
+  string AString = 1;
+  // AInt is a test int64.
+  int64 AInt = 2;
+}

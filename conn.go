@@ -278,7 +278,7 @@ func (conn *Conn) recvResponse(env *rtapi.Envelope) error {
 	case *rtapi.Envelope_MatchmakerTicket:
 		conn.h.Logf("MatchmakerTicket: %+v, Cid: %s", v.MatchmakerTicket, env.Cid)
 	case *rtapi.Envelope_Pong:
-		conn.h.Logf("Pong: nil, Cid: %s", v.Pong, env.Cid)
+		conn.h.Logf("Pong, Cid: %s", env.Cid)
 	case *rtapi.Envelope_Status:
 		conn.h.Logf("Status: %+v, Cid: %s", v.Status, env.Cid)
 	case *rtapi.Envelope_Rpc:

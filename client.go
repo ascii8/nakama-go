@@ -212,7 +212,8 @@ func (cl *Client) Do(ctx context.Context, method, typ string, session bool, quer
 // otherwise uses Go's encoding/json package.
 func (cl *Client) Marshal(v interface{}) (io.Reader, error) {
 	// protojson encode
-	if msg, ok := v.(proto.Message); ok {
+	msg, ok := v.(proto.Message)
+	if ok {
 		if msg != nil {
 			buf, err := cl.marshaler.Marshal(msg)
 			if err != nil {

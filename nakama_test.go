@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	testpb "github.com/ascii8/nakama-go/apitest/proto"
 	"github.com/ascii8/nktest"
 	"github.com/google/uuid"
 	nkapi "github.com/heroiclabs/nakama-common/api"
@@ -86,6 +87,31 @@ func TestRpc(t *testing.T) {
 	t.Logf("rewards: %d", res.Rewards)
 	if res.Rewards != 2*amount {
 		t.Errorf("expected %d, got: %d", 2*amount, res.Rewards)
+	}
+}
+
+func TestRpcProtoEncodeDecode(t *testing.T) {
+	const name string = "bob"
+	const amount int64 = 1000
+	ctx, cancel := context.WithCancel(globalCtx)
+	defer cancel()
+	cl := newClient(ctx, t, false)
+	msg := &testpb.Test{
+		AString: name,
+		AInt:    amount,
+	}
+	res := new(testpb.Test)
+	req := Rpc("protoTest", msg, res)
+	if err := req.WithHttpKey(nkTest.Name()).Do(ctx, cl); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	t.Logf("AString: %s", res.AString)
+	t.Logf("AInt: %d", res.AInt)
+	if res.AString != "hello "+name {
+		t.Errorf("expected %q, got: %q", "hello "+name, res.AString)
+	}
+	if res.AInt != 2*amount {
+		t.Errorf("expected %d, got: %d", 2*amount, res.AInt)
 	}
 }
 

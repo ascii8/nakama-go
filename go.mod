@@ -3,6 +3,7 @@ module github.com/ascii8/nakama-go
 go 1.18
 
 require (
+	github.com/ascii8/nakama-go/apitest v0.0.0-00010101000000-000000000000
 	github.com/ascii8/nktest v0.3.4
 	github.com/google/uuid v1.3.0
 	github.com/heroiclabs/nakama-common v1.23.0
@@ -116,3 +117,5 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
+
+replace github.com/ascii8/nakama-go/apitest => ./apitest
