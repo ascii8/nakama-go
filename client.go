@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"golang.org/x/net/publicsuffix"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -150,7 +151,7 @@ func (cl *Client) Exec(req *http.Request) (*http.Response, error) {
 	switch {
 	case res.StatusCode != http.StatusOK:
 		defer res.Body.Close()
-		return nil, fmt.Errorf("status %d != 200", res.StatusCode)
+		return nil, NewClientErrorFromReader(res.StatusCode, res.Body)
 	}
 	return res, nil
 }
@@ -1383,4 +1384,28 @@ func ParseTokenExpiry(tokenstr, typ string, grace time.Duration) (time.Time, tim
 		return time.Time{}, time.Time{}, fmt.Errorf("%s token expiry (%s [%d]) is after the grace expiry (%s)", typ, expiry, v.Exp, grace)
 	}
 	return expiry, expiryGraced, nil
+}
+
+// ClientError is a client error.
+type ClientError struct {
+	StatusCode int
+	Code       codes.Code `json:"code"`
+	Message    string     `json:"message"`
+}
+
+// NewClientErrorFromReader reads a client error from a reader.
+func NewClientErrorFromReader(statusCode int, r io.Reader) error {
+	dec := json.NewDecoder(r)
+	err := &ClientError{
+		StatusCode: statusCode,
+	}
+	if e := dec.Decode(err); e != nil {
+		return fmt.Errorf("status %d != 200 (and unable to decode error: %w)", statusCode, e)
+	}
+	return err
+}
+
+// Error satsifies the error interface.
+func (err *ClientError) Error() string {
+	return fmt.Sprintf("http status %d != 200: %s: %s", err.StatusCode, err.Code, err.Message)
 }

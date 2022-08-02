@@ -3,11 +3,12 @@ module github.com/ascii8/nakama-go
 go 1.18
 
 require (
-	github.com/ascii8/nktest v0.3.3
+	github.com/ascii8/nktest v0.3.4
 	github.com/google/uuid v1.3.0
 	github.com/heroiclabs/nakama-common v1.23.0
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
 	golang.org/x/net v0.0.0-20220726230323-06994584191e
+	google.golang.org/grpc v1.44.0
 	google.golang.org/protobuf v1.27.1
 	nhooyr.io/websocket v1.8.7
 )
@@ -110,7 +111,6 @@ require (
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20220304144024-325a89244dc8 // indirect
-	google.golang.org/grpc v1.44.0 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect

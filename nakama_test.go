@@ -43,6 +43,7 @@ func TestMain(m *testing.M) {
 	nkTest = nktest.New(
 		nktest.WithDir("./apitest"),
 		nktest.WithAlwaysPull(pull != "" && pull != "false" && pull != "0"),
+		nktest.WithHostPortMap(),
 		nktest.WithBuildConfig("./nkapitest", nktest.WithDefaultGoEnv(), nktest.WithDefaultGoVolumes()),
 	)
 	if err := nkTest.Run(globalCtx); err == nil {
