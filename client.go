@@ -1416,7 +1416,7 @@ func NewClientErrorFromReader(statusCode int, r io.Reader) error {
 	return err
 }
 
-// Error satsifies the error interface.
+// Error satisfies the error interface.
 func (err *ClientError) Error() string {
 	return fmt.Sprintf("http status %d != 200: %s: %s", err.StatusCode, err.Code, err.Message)
 }

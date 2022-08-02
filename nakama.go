@@ -141,7 +141,7 @@ func (req *AccountRequest) Async(ctx context.Context, cl *Client, f func(*Accoun
 	}()
 }
 
-// AccountResponse is the account repsonse.
+// AccountResponse is the account response.
 type AccountResponse = nkapi.Account
 
 // UpdateAccountRequest is a request to update the user's account.
@@ -202,7 +202,7 @@ func (req *UpdateAccountRequest) Async(ctx context.Context, cl *Client, f func(e
 	}()
 }
 
-// SessionResponse is the authenticate repsonse.
+// SessionResponse is the authenticate response.
 type SessionResponse = nkapi.Session
 
 // AuthenticateAppleRequest is a request to authenticate a user with an Apple
