@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -44,6 +43,8 @@ type Client struct {
 	marshaler   *protojson.MarshalOptions
 	unmarshaler *protojson.UnmarshalOptions
 
+	logf func(string, ...interface{})
+
 	rw sync.RWMutex
 }
 
@@ -76,12 +77,14 @@ func New(opts ...Option) *Client {
 
 // Logf satisfies the Handler interface.
 func (cl *Client) Logf(s string, v ...interface{}) {
-	log.Printf(s, v...)
+	if cl.logf != nil {
+		cl.logf(s, v...)
+	}
 }
 
 // Errf satisfies the handler interface.
 func (cl *Client) Errf(s string, v ...interface{}) {
-	log.Printf("ERROR: "+s, v...)
+	cl.Logf("ERROR: "+s, v...)
 }
 
 // HttpClient satisfies the handler interface.
@@ -1346,6 +1349,13 @@ func WithJar(jar http.CookieJar) Option {
 func WithTransport(transport http.RoundTripper) Option {
 	return func(cl *Client) {
 		cl.cl.Transport = transport
+	}
+}
+
+// WithLogger is a nakama client option to set a logger.
+func WithLogger(f func(string, ...interface{})) Option {
+	return func(cl *Client) {
+		cl.logf = f
 	}
 }
 

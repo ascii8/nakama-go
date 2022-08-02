@@ -35,8 +35,7 @@ func dailyRewards(ctx context.Context, logger runtime.Logger, db *sql.DB, nk run
 	}
 	// encode response
 	res := new(bytes.Buffer)
-	enc := json.NewEncoder(res)
-	if err := enc.Encode(Rewards{
+	if err := json.NewEncoder(res).Encode(Rewards{
 		Rewards: req.Rewards * 2,
 	}); err != nil {
 		return "", err

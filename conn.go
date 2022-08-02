@@ -13,6 +13,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	nkapi "github.com/heroiclabs/nakama-common/api"
 	"github.com/heroiclabs/nakama-common/rtapi"
 	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -237,7 +238,7 @@ func (conn *Conn) recvNotify(env *rtapi.Envelope) error {
 	case *rtapi.Envelope_Notifications:
 		conn.notifyNotifications(v.Notifications)
 	case *rtapi.Envelope_StatusPresenceEvent:
-		conn.notifyStatusPresence(v.StatusPresenceEvent)
+		conn.notifyStatusPresenceEvent(v.StatusPresenceEvent)
 	case *rtapi.Envelope_StreamData:
 		conn.notifyStreamData(v.StreamData)
 	case *rtapi.Envelope_StreamPresenceEvent:
@@ -323,34 +324,34 @@ func (conn *Conn) Close() error {
 	return nil
 }
 
-func (conn *Conn) notifyError(v interface{}) {
+func (conn *Conn) notifyError(msg *rtapi.Error) {
 }
 
-func (conn *Conn) notifyChannelMessage(v interface{}) {
+func (conn *Conn) notifyChannelMessage(msg *nkapi.ChannelMessage) {
 }
 
-func (conn *Conn) notifyChannelPresenceEvent(v interface{}) {
+func (conn *Conn) notifyChannelPresenceEvent(msg *rtapi.ChannelPresenceEvent) {
 }
 
-func (conn *Conn) notifyMatchData(v interface{}) {
+func (conn *Conn) notifyMatchData(msg *rtapi.MatchData) {
 }
 
-func (conn *Conn) notifyMatchPresenceEvent(v interface{}) {
+func (conn *Conn) notifyMatchPresenceEvent(msg *rtapi.MatchPresenceEvent) {
 }
 
-func (conn *Conn) notifyMatchmakerMatched(v interface{}) {
+func (conn *Conn) notifyMatchmakerMatched(msg *rtapi.MatchmakerMatched) {
 }
 
-func (conn *Conn) notifyNotifications(v interface{}) {
+func (conn *Conn) notifyNotifications(msg *rtapi.Notifications) {
 }
 
-func (conn *Conn) notifyStatusPresence(v interface{}) {
+func (conn *Conn) notifyStatusPresenceEvent(msg *rtapi.StatusPresenceEvent) {
 }
 
-func (conn *Conn) notifyStreamData(v interface{}) {
+func (conn *Conn) notifyStreamData(msg *rtapi.StreamData) {
 }
 
-func (conn *Conn) notifyStreamPresenceEvent(v interface{}) {
+func (conn *Conn) notifyStreamPresenceEvent(msg *rtapi.StreamPresenceEvent) {
 }
 
 // ChannelJoin sends a message to join a chat channel.

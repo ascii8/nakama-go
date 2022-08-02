@@ -185,6 +185,7 @@ func newClient(ctx context.Context, t *testing.T, addProxyLogger bool, opts ...O
 		WithURL(urlstr),
 		WithServerKey(nkTest.ServerKey()),
 		WithTransport(transport),
+		WithLogger(t.Logf),
 	}, opts...)
 	return New(opts...)
 }
