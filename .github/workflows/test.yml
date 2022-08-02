@@ -1,0 +1,35 @@
+name: Test
+env:
+  PODMAN_HOST: tcp://127.0.0.1:3333
+on:
+  push:
+    branch:
+      - master
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: setup dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgpgme-dev libbtrfs-dev libdevmapper-dev
+      - name: setup podman
+        run: |
+          curl -fsSL -o podman-linux-amd64.tar.gz https://github.com/mgoltzsche/podman-static/releases/latest/download/podman-linux-amd64.tar.gz
+          curl -fsSL -o podman-linux-amd64.tar.gz.asc https://github.com/mgoltzsche/podman-static/releases/latest/download/podman-linux-amd64.tar.gz.asc
+          gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys 0CCF102C4F95D89E583FF1D4F8B5AF50344BB503
+          gpg --batch --verify podman-linux-amd64.tar.gz.asc podman-linux-amd64.tar.gz
+          tar -xzf podman-linux-amd64.tar.gz
+          sudo cp -r podman-linux-amd64/usr podman-linux-amd64/etc /
+          /usr/local/bin/podman version
+          echo $PODMAN_HOST
+          /usr/local/bin/podman system service --time=0 $PODMAN_HOST &
+      - name: install go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.18.x
+      - name: test
+        run: |
+          go test -v
