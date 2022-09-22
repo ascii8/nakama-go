@@ -1,2 +1,2 @@
-/.cache/
-/apitest/.cache/
+/testdata/.cache/
+*.txt

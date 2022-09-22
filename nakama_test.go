@@ -2,76 +2,44 @@ package nakama
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"testing"
 	"time"
 
-	testpb "github.com/ascii8/nakama-go/apitest/proto"
 	"github.com/ascii8/nktest"
 	"github.com/google/uuid"
 	nkapi "github.com/heroiclabs/nakama-common/api"
 	"golang.org/x/exp/slices"
 )
 
-// globalCtx is the global context.
-var globalCtx context.Context
-
-// nkTest is the nakama test runner.
-var nkTest *nktest.Runner
-
 // TestMain handles setting up and tearing down the postgres and nakama docker
 // images.
 func TestMain(m *testing.M) {
-	var cancel func()
-	globalCtx, cancel = context.WithCancel(context.Background())
-	go func() {
-		// catch signals, canceling context to cause cleanup
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-		select {
-		case <-globalCtx.Done():
-		case sig := <-ch:
-			fmt.Fprintf(os.Stdout, "SIGNAL: %s\n", sig)
-			cancel()
-		}
-	}()
-	code := 0
-	pull := os.Getenv("PULL")
-	nkTest = nktest.New(
-		nktest.WithDir("./apitest"),
-		nktest.WithAlwaysPull(pull != "" && pull != "false" && pull != "0"),
-		nktest.WithHostPortMap(),
+	ctx := context.Background()
+	ctx = nktest.WithAlwaysPullFromEnv(ctx, "PULL")
+	ctx = nktest.WithHostPortMap(ctx)
+	nktest.Main(
+		ctx,
+		m,
+		nktest.WithDir("./testdata"),
 		nktest.WithBuildConfig("./nkapitest", nktest.WithDefaultGoEnv(), nktest.WithDefaultGoVolumes()),
 	)
-	if err := nkTest.Run(globalCtx); err == nil {
-		code = m.Run()
-	} else {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		code = 1
-	}
-	cancel()
-	<-time.After(2200 * time.Millisecond)
-	os.Exit(code)
 }
 
 func TestHealthcheck(t *testing.T) {
-	ctx, cancel := context.WithCancel(globalCtx)
+	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
-	cl := newClient(ctx, t, false)
+	cl := newClient(ctx, t, nk, false)
 	if err := cl.Healthcheck(ctx); err != nil {
 		t.Errorf("expected no error, got: %v", err)
 	}
 }
 
 func TestRpc(t *testing.T) {
-	const amount int64 = 1000
-	ctx, cancel := context.WithCancel(globalCtx)
+	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
-	cl := newClient(ctx, t, false)
+	const amount int64 = 1000
+	cl := newClient(ctx, t, nk, false)
 	var res rewards
 	req := Rpc(
 		"dailyRewards",
@@ -80,7 +48,7 @@ func TestRpc(t *testing.T) {
 		},
 		&res,
 	).
-		WithHttpKey(nkTest.Name())
+		WithHttpKey(nk.Name())
 	if err := req.Do(ctx, cl); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -91,18 +59,18 @@ func TestRpc(t *testing.T) {
 }
 
 func TestRpcProtoEncodeDecode(t *testing.T) {
+	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
+	defer cancel()
 	const name string = "bob"
 	const amount int64 = 1000
-	ctx, cancel := context.WithCancel(globalCtx)
-	defer cancel()
-	cl := newClient(ctx, t, false)
-	msg := &testpb.Test{
+	cl := newClient(ctx, t, nk, false)
+	msg := &Test{
 		AString: name,
 		AInt:    amount,
 	}
-	res := new(testpb.Test)
+	res := new(Test)
 	req := Rpc("protoTest", msg, res)
-	if err := req.WithHttpKey(nkTest.Name()).Do(ctx, cl); err != nil {
+	if err := req.WithHttpKey(nk.Name()).Do(ctx, cl); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	t.Logf("AString: %s", res.AString)
@@ -116,16 +84,16 @@ func TestRpcProtoEncodeDecode(t *testing.T) {
 }
 
 func TestAuthenticateDevice(t *testing.T) {
-	ctx, cancel := context.WithCancel(globalCtx)
+	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
-	cl := newClient(ctx, t, false, WithServerKey(nkTest.ServerKey()))
+	cl := newClient(ctx, t, nk, false, WithServerKey(nk.ServerKey()))
 	createAccount(ctx, t, cl)
 }
 
 func TestPing(t *testing.T) {
-	ctx, cancel := context.WithCancel(globalCtx)
+	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
-	cl := newClient(ctx, t, true, WithServerKey(nkTest.ServerKey()))
+	cl := newClient(ctx, t, nk, true, WithServerKey(nk.ServerKey()))
 	conn := createAccountAndConn(ctx, t, cl)
 	defer conn.Close()
 	if err := conn.Ping(ctx); err != nil {
@@ -155,37 +123,27 @@ func TestRpcRealtime(t *testing.T) {
 }
 
 func TestChannels(t *testing.T) {
-	ctx, cancel := context.WithCancel(globalCtx)
+	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
-	cl := newClient(ctx, t, true, WithServerKey(nkTest.ServerKey()))
+	cl := newClient(ctx, t, nk, true, WithServerKey(nk.ServerKey()))
 	conn := createAccountAndConn(ctx, t, cl)
 	defer conn.Close()
 }
 
-func newClient(ctx context.Context, t *testing.T, addProxyLogger bool, opts ...Option) *Client {
-	local := nkTest.HttpLocal()
-	t.Logf("real: %s", local)
-	logger := nktest.NewLogger(t.Logf)
-	var proxyOpts []nktest.ProxyOption
-	if addProxyLogger {
-		proxyOpts = append(proxyOpts, nktest.WithLogger(logger))
-	}
-	urlstr, err := nktest.NewProxy(proxyOpts...).Run(ctx, local)
+func newClient(ctx context.Context, t *testing.T, nk *nktest.Runner, addProxyLogger bool, opts ...Option) *Client {
+	local := nk.HttpLocal()
+	t.Logf("local: %s", local)
+	urlstr, err := nktest.NewProxy().Run(ctx, local)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	t.Logf("url: %s", urlstr)
-	var transport http.RoundTripper = &http.Transport{
-		DisableCompression: true,
-	}
-	if !addProxyLogger {
-		transport = logger.Transport(nil)
-	}
 	opts = append([]Option{
 		WithURL(urlstr),
-		WithServerKey(nkTest.ServerKey()),
-		WithTransport(transport),
-		WithLogger(t.Logf),
+		WithServerKey(nk.ServerKey()),
+		WithTransport(&http.Transport{
+			DisableCompression: true,
+		}),
 	}, opts...)
 	return New(opts...)
 }

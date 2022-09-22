@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package apitest.proto;
+package testdata.proto;
 
-option go_package = "github.com/ascii8/nakama-go/apitest/proto";
+option go_package = "github.com/ascii8/nakama-go/testdata/proto";
 
 message Test {
   // AString is a test field.

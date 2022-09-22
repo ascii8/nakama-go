@@ -24,12 +24,12 @@ jobs:
           tar -xzf podman-linux-amd64.tar.gz
           sudo cp -r podman-linux-amd64/usr podman-linux-amd64/etc /
           /usr/local/bin/podman version
-          echo $PODMAN_HOST
+          echo "PODMAN_HOST: $PODMAN_HOST"
           /usr/local/bin/podman system service --time=0 $PODMAN_HOST &
       - name: install go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.18.x
+          go-version: 1.19.x
       - name: test
         run: |
           go test -v
