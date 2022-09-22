@@ -12,15 +12,13 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-// TestMain handles setting up and tearing down the postgres and nakama docker
-// images.
+// TestMain handles setting up and tearing down the postgres and nakama
+// containers.
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 	ctx = nktest.WithAlwaysPullFromEnv(ctx, "PULL")
 	ctx = nktest.WithHostPortMap(ctx)
-	nktest.Main(
-		ctx,
-		m,
+	nktest.Main(ctx, m,
 		nktest.WithDir("./testdata"),
 		nktest.WithBuildConfig("./nkapitest", nktest.WithDefaultGoEnv(), nktest.WithDefaultGoVolumes()),
 	)
@@ -29,7 +27,7 @@ func TestMain(m *testing.M) {
 func TestHealthcheck(t *testing.T) {
 	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
-	cl := newClient(ctx, t, nk, false)
+	cl := newClient(ctx, t, nk)
 	if err := cl.Healthcheck(ctx); err != nil {
 		t.Errorf("expected no error, got: %v", err)
 	}
@@ -39,7 +37,7 @@ func TestRpc(t *testing.T) {
 	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
 	const amount int64 = 1000
-	cl := newClient(ctx, t, nk, false)
+	cl := newClient(ctx, t, nk)
 	var res rewards
 	req := Rpc(
 		"dailyRewards",
@@ -63,7 +61,7 @@ func TestRpcProtoEncodeDecode(t *testing.T) {
 	defer cancel()
 	const name string = "bob"
 	const amount int64 = 1000
-	cl := newClient(ctx, t, nk, false)
+	cl := newClient(ctx, t, nk)
 	msg := &Test{
 		AString: name,
 		AInt:    amount,
@@ -86,14 +84,14 @@ func TestRpcProtoEncodeDecode(t *testing.T) {
 func TestAuthenticateDevice(t *testing.T) {
 	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
-	cl := newClient(ctx, t, nk, false, WithServerKey(nk.ServerKey()))
+	cl := newClient(ctx, t, nk, WithServerKey(nk.ServerKey()))
 	createAccount(ctx, t, cl)
 }
 
 func TestPing(t *testing.T) {
 	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
-	cl := newClient(ctx, t, nk, true, WithServerKey(nk.ServerKey()))
+	cl := newClient(ctx, t, nk, WithServerKey(nk.ServerKey()))
 	conn := createAccountAndConn(ctx, t, cl)
 	defer conn.Close()
 	if err := conn.Ping(ctx); err != nil {
@@ -125,15 +123,13 @@ func TestRpcRealtime(t *testing.T) {
 func TestChannels(t *testing.T) {
 	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
-	cl := newClient(ctx, t, nk, true, WithServerKey(nk.ServerKey()))
+	cl := newClient(ctx, t, nk, WithServerKey(nk.ServerKey()))
 	conn := createAccountAndConn(ctx, t, cl)
 	defer conn.Close()
 }
 
-func newClient(ctx context.Context, t *testing.T, nk *nktest.Runner, addProxyLogger bool, opts ...Option) *Client {
-	local := nk.HttpLocal()
-	t.Logf("local: %s", local)
-	urlstr, err := nktest.NewProxy().Run(ctx, local)
+func newClient(ctx context.Context, t *testing.T, nk *nktest.Runner, opts ...Option) *Client {
+	urlstr, err := nktest.RunProxy(ctx)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
