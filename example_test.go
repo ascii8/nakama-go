@@ -8,8 +8,6 @@ import (
 	"github.com/ascii8/nakama-go"
 )
 
-// , nakama.WithTransport(nktest.NewLogger(log.Printf).Transport(nil))
-
 func Example() {
 	const id = "6d0c9e83-8385-48a8-8601-060b8f6a3bf6"
 	ctx, cancel := context.WithCancel(context.Background())

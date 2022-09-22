@@ -6,7 +6,7 @@ require (
 	github.com/ascii8/nktest v0.5.1
 	github.com/google/uuid v1.3.0
 	github.com/heroiclabs/nakama-common v1.24.0
-	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
+	golang.org/x/exp v0.0.0-20220921164117-439092de6870
 	golang.org/x/net v0.0.0-20220921203646-d300de134e69
 	google.golang.org/grpc v1.49.0
 	google.golang.org/protobuf v1.28.1
