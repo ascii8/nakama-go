@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -14,7 +13,6 @@ import (
 )
 
 func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, initializer runtime.Initializer) error {
-	logger.Info("INIT")
 	if err := initializer.RegisterRpc("dailyRewards", dailyRewards); err != nil {
 		return err
 	}
@@ -24,42 +22,45 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	return nil
 }
 
-func dailyRewards(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
-	logger.Info("dailyRewards payload: %q", payload)
+func dailyRewards(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payloadstr string) (string, error) {
 	// decode request
-	dec := json.NewDecoder(strings.NewReader(payload))
+	dec := json.NewDecoder(strings.NewReader(payloadstr))
 	dec.DisallowUnknownFields()
 	var req Rewards
 	if err := dec.Decode(&req); err != nil {
 		return "", err
 	}
-	// encode response
-	res := new(bytes.Buffer)
-	if err := json.NewEncoder(res).Encode(Rewards{
+	logger.WithField("req", req).Info("dailyRewards")
+	res := Rewards{
 		Rewards: req.Rewards * 2,
-	}); err != nil {
+	}
+	logger.WithField("res", res).Info("dailyRewards")
+	// encode response
+	buf, err := json.Marshal(res)
+	if err != nil {
 		return "", err
 	}
-	return res.String(), nil
+	return string(buf), nil
 }
 
 type Rewards struct {
 	Rewards int64 `json:"rewards,omitempty"`
 }
 
-func protoTest(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
-	logger.Info("protoTest payload: %q", payload)
+func protoTest(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payloadstr string) (string, error) {
 	req := new(testpb.Test)
-	if err := protojson.Unmarshal([]byte(payload), req); err != nil {
+	if err := protojson.Unmarshal([]byte(payloadstr), req); err != nil {
 		return "", fmt.Errorf("unable to unmarshal protobuf message: %w", err)
 	}
+	logger.WithField("req", req).Info("protoTest")
 	res := &testpb.Test{
 		AString: "hello " + req.AString,
 		AInt:    2 * req.AInt,
 	}
+	logger.WithField("res", res).Info("protoTest")
 	buf, err := protojson.Marshal(res)
 	if err != nil {
-		return "", fmt.Errorf("unable to marshal protobuf message: %w", err)
+		return "", err
 	}
 	return string(buf), nil
 }
