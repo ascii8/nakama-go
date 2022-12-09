@@ -455,11 +455,11 @@ type MatchJoinMsg struct {
 }
 
 // MatchJoin creates a realtime message to join a match.
-func MatchJoin(token string) *MatchJoinMsg {
+func MatchJoin(matchId string) *MatchJoinMsg {
 	return &MatchJoinMsg{
 		MatchJoin: rtapi.MatchJoin{
-			Id: &rtapi.MatchJoin_Token{
-				Token: token,
+			Id: &rtapi.MatchJoin_MatchId{
+				MatchId: matchId,
 			},
 		},
 	}
