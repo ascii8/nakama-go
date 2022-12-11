@@ -265,27 +265,10 @@ func (conn *Conn) recvResponse(env *rtapi.Envelope) error {
 		conn.rw.Unlock()
 	}()
 	// check error
-	switch v := env.Message.(type) {
-	case *rtapi.Envelope_Error:
-		conn.h.Logf("Error: %+v", v.Error)
+	if v, ok := env.Message.(*rtapi.Envelope_Error); ok {
+		conn.h.Errf("Error: %+v", v.Error)
 		req.err <- NewRealtimeError(v.Error)
 		return nil
-	case nil:
-		conn.h.Logf("Empty, Cid: %s", env.Cid)
-	case *rtapi.Envelope_Channel:
-		conn.h.Logf("Channel: %+v, Cid: %s", v.Channel, env.Cid)
-	case *rtapi.Envelope_ChannelMessageAck:
-		conn.h.Logf("ChannelMessageAck: %+v, Cid: %s", v.ChannelMessageAck, env.Cid)
-	case *rtapi.Envelope_MatchmakerTicket:
-		conn.h.Logf("MatchmakerTicket: %+v, Cid: %s", v.MatchmakerTicket, env.Cid)
-	case *rtapi.Envelope_Pong:
-		conn.h.Logf("Pong, Cid: %s", env.Cid)
-	case *rtapi.Envelope_Status:
-		conn.h.Logf("Status: %+v, Cid: %s", v.Status, env.Cid)
-	case *rtapi.Envelope_Rpc:
-		conn.h.Logf("Rpc: %+v, Cid: %s", v.Rpc, env.Cid)
-	default:
-		return fmt.Errorf("unknown type %T cid: %s", env.Message, env.Cid)
 	}
 	// merge
 	proto.Merge(req.v.BuildEnvelope(), env)
