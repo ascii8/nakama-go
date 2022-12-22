@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -32,20 +31,28 @@ type Handler interface {
 
 // Conn is a nakama realtime websocket connection.
 type Conn struct {
-	h      Handler
-	url    string
-	token  string
-	binary bool
-	query  url.Values
-	conn   *websocket.Conn
-	cancel func()
-	out    chan *req
-	in     chan []byte
-	l      map[string]*req
-	rw     sync.RWMutex
-	id     uint64
-
-	notify map[reflect.Type][]reflect.Value
+	h                           Handler
+	url                         string
+	token                       string
+	binary                      bool
+	query                       url.Values
+	conn                        *websocket.Conn
+	cancel                      func()
+	out                         chan *req
+	in                          chan []byte
+	l                           map[string]*req
+	rw                          sync.RWMutex
+	id                          uint64
+	ErrorHandler                func(context.Context, *ErrorMsg)
+	ChannelMessageHandler       func(context.Context, *ChannelMessageMsg)
+	ChannelPresenceEventHandler func(context.Context, *ChannelPresenceEventMsg)
+	MatchDataHandler            func(context.Context, *MatchDataMsg)
+	MatchPresenceEventHandler   func(context.Context, *MatchPresenceEventMsg)
+	MatchmakerMatchedHandler    func(context.Context, *MatchmakerMatchedMsg)
+	NotificationsHandler        func(context.Context, *NotificationsMsg)
+	StatusPresenceEventHandler  func(context.Context, *StatusPresenceEventMsg)
+	StreamDataHandler           func(context.Context, *StreamDataMsg)
+	StreamPresenceEventHandler  func(context.Context, *StreamPresenceEventMsg)
 }
 
 // NewConn creates a new nakama realtime websocket connection.
@@ -56,7 +63,6 @@ func NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
 		out:    make(chan *req),
 		in:     make(chan []byte),
 		l:      make(map[string]*req),
-		notify: make(map[reflect.Type][]reflect.Value),
 	}
 	for _, o := range opts {
 		o(conn)
@@ -226,30 +232,57 @@ func (conn *Conn) recv(ctx context.Context, buf []byte) error {
 func (conn *Conn) recvNotify(ctx context.Context, env *rtapi.Envelope) error {
 	switch v := env.Message.(type) {
 	case *rtapi.Envelope_Error:
-		conn.notifyError(ctx, v.Error)
+		if conn.ErrorHandler != nil {
+			go conn.ErrorHandler(ctx, &ErrorMsg{*v.Error})
+		}
 		return NewRealtimeError(v.Error)
 	case *rtapi.Envelope_ChannelMessage:
-		conn.notifyChannelMessage(ctx, v.ChannelMessage)
+		if conn.ChannelMessageHandler != nil {
+			go conn.ChannelMessageHandler(ctx, &ChannelMessageMsg{*v.ChannelMessage})
+		}
+		return nil
 	case *rtapi.Envelope_ChannelPresenceEvent:
-		conn.notifyChannelPresenceEvent(ctx, v.ChannelPresenceEvent)
+		if conn.ChannelPresenceEventHandler != nil {
+			go conn.ChannelPresenceEventHandler(ctx, &ChannelPresenceEventMsg{*v.ChannelPresenceEvent})
+		}
+		return nil
 	case *rtapi.Envelope_MatchData:
-		conn.notifyMatchData(ctx, v.MatchData)
+		if conn.MatchDataHandler != nil {
+			go conn.MatchDataHandler(ctx, &MatchDataMsg{*v.MatchData})
+		}
+		return nil
 	case *rtapi.Envelope_MatchPresenceEvent:
-		conn.notifyMatchPresenceEvent(ctx, v.MatchPresenceEvent)
+		if conn.MatchPresenceEventHandler != nil {
+			go conn.MatchPresenceEventHandler(ctx, &MatchPresenceEventMsg{*v.MatchPresenceEvent})
+		}
+		return nil
 	case *rtapi.Envelope_MatchmakerMatched:
-		conn.notifyMatchmakerMatched(ctx, v.MatchmakerMatched)
+		if conn.MatchmakerMatchedHandler != nil {
+			go conn.MatchmakerMatchedHandler(ctx, &MatchmakerMatchedMsg{*v.MatchmakerMatched})
+		}
+		return nil
 	case *rtapi.Envelope_Notifications:
-		conn.notifyNotifications(ctx, v.Notifications)
+		if conn.NotificationsHandler != nil {
+			go conn.NotificationsHandler(ctx, &NotificationsMsg{*v.Notifications})
+		}
+		return nil
 	case *rtapi.Envelope_StatusPresenceEvent:
-		conn.notifyStatusPresenceEvent(ctx, v.StatusPresenceEvent)
+		if conn.StatusPresenceEventHandler != nil {
+			go conn.StatusPresenceEventHandler(ctx, &StatusPresenceEventMsg{*v.StatusPresenceEvent})
+		}
+		return nil
 	case *rtapi.Envelope_StreamData:
-		conn.notifyStreamData(ctx, v.StreamData)
+		if conn.StreamDataHandler != nil {
+			go conn.StreamDataHandler(ctx, &StreamDataMsg{*v.StreamData})
+		}
+		return nil
 	case *rtapi.Envelope_StreamPresenceEvent:
-		conn.notifyStreamPresenceEvent(ctx, v.StreamPresenceEvent)
-	default:
-		return fmt.Errorf("unknown type %T", env.Message)
+		if conn.StreamPresenceEventHandler != nil {
+			go conn.StreamPresenceEventHandler(ctx, &StreamPresenceEventMsg{*v.StreamPresenceEvent})
+		}
+		return nil
 	}
-	return nil
+	return fmt.Errorf("unknown type %T", env.Message)
 }
 
 // recvResponse dispatches a received a response (messages with cid != "").
@@ -269,7 +302,7 @@ func (conn *Conn) recvResponse(env *rtapi.Envelope) error {
 	}()
 	// check error
 	if v, ok := env.Message.(*rtapi.Envelope_Error); ok {
-		conn.h.Errf("Error: %+v", v.Error)
+		conn.h.Errf("error: %+v", v.Error)
 		req.err <- NewRealtimeError(v.Error)
 		return nil
 	}
