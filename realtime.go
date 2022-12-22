@@ -402,11 +402,11 @@ type MatchDataSendMsg struct {
 }
 
 // MatchDataSend creates a realtime message to send input to a multiplayer match.
-func MatchDataSend(matchId string, opCode OpType, data []byte) *MatchDataSendMsg {
+func MatchDataSend(matchId string, opCode int64, data []byte) *MatchDataSendMsg {
 	return &MatchDataSendMsg{
 		MatchDataSend: rtapi.MatchDataSend{
 			MatchId: matchId,
-			OpCode:  int64(opCode),
+			OpCode:  opCode,
 			Data:    data,
 		},
 	}
@@ -439,7 +439,7 @@ func (msg *MatchDataSendMsg) WithReliable(reliable bool) *MatchDataSendMsg {
 
 // Send sends the message to the connection.
 func (msg *MatchDataSendMsg) Send(ctx context.Context, conn *Conn) error {
-	return conn.Send(ctx, msg, empty())
+	return conn.Send(ctx, msg, nil)
 }
 
 // Async sends the message to the connection.

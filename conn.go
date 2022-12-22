@@ -7,13 +7,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 
-	nkapi "github.com/heroiclabs/nakama-common/api"
 	"github.com/heroiclabs/nakama-common/rtapi"
 	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -44,6 +44,8 @@ type Conn struct {
 	l      map[string]*req
 	rw     sync.RWMutex
 	id     uint64
+
+	notify map[reflect.Type][]reflect.Value
 }
 
 // NewConn creates a new nakama realtime websocket connection.
@@ -54,6 +56,7 @@ func NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
 		out:    make(chan *req),
 		in:     make(chan []byte),
 		l:      make(map[string]*req),
+		notify: make(map[reflect.Type][]reflect.Value),
 	}
 	for _, o := range opts {
 		o(conn)
@@ -181,7 +184,7 @@ func (conn *Conn) run(ctx context.Context) {
 			if buf == nil {
 				continue
 			}
-			if err := conn.recv(buf); err != nil {
+			if err := conn.recv(ctx, buf); err != nil {
 				conn.h.Errf("unable to dispatch incoming message: %v", err)
 				continue
 			}
@@ -208,41 +211,41 @@ func (conn *Conn) send(ctx context.Context, msg EnvelopeBuilder) (string, error)
 }
 
 // recv unmarshals buf, dispatching the message.
-func (conn *Conn) recv(buf []byte) error {
+func (conn *Conn) recv(ctx context.Context, buf []byte) error {
 	env, err := conn.unmarshal(buf)
 	switch {
 	case err != nil:
 		return fmt.Errorf("unable to unmarshal: %w", err)
 	case env.Cid == "":
-		return conn.recvNotify(env)
+		return conn.recvNotify(ctx, env)
 	}
 	return conn.recvResponse(env)
 }
 
 // recvNotify dispaches events and received updates.
-func (conn *Conn) recvNotify(env *rtapi.Envelope) error {
+func (conn *Conn) recvNotify(ctx context.Context, env *rtapi.Envelope) error {
 	switch v := env.Message.(type) {
 	case *rtapi.Envelope_Error:
-		conn.notifyError(v.Error)
+		conn.notifyError(ctx, v.Error)
 		return NewRealtimeError(v.Error)
 	case *rtapi.Envelope_ChannelMessage:
-		conn.notifyChannelMessage(v.ChannelMessage)
+		conn.notifyChannelMessage(ctx, v.ChannelMessage)
 	case *rtapi.Envelope_ChannelPresenceEvent:
-		conn.notifyChannelPresenceEvent(v.ChannelPresenceEvent)
+		conn.notifyChannelPresenceEvent(ctx, v.ChannelPresenceEvent)
 	case *rtapi.Envelope_MatchData:
-		conn.notifyMatchData(v.MatchData)
+		conn.notifyMatchData(ctx, v.MatchData)
 	case *rtapi.Envelope_MatchPresenceEvent:
-		conn.notifyMatchPresenceEvent(v.MatchPresenceEvent)
+		conn.notifyMatchPresenceEvent(ctx, v.MatchPresenceEvent)
 	case *rtapi.Envelope_MatchmakerMatched:
-		conn.notifyMatchmakerMatched(v.MatchmakerMatched)
+		conn.notifyMatchmakerMatched(ctx, v.MatchmakerMatched)
 	case *rtapi.Envelope_Notifications:
-		conn.notifyNotifications(v.Notifications)
+		conn.notifyNotifications(ctx, v.Notifications)
 	case *rtapi.Envelope_StatusPresenceEvent:
-		conn.notifyStatusPresenceEvent(v.StatusPresenceEvent)
+		conn.notifyStatusPresenceEvent(ctx, v.StatusPresenceEvent)
 	case *rtapi.Envelope_StreamData:
-		conn.notifyStreamData(v.StreamData)
+		conn.notifyStreamData(ctx, v.StreamData)
 	case *rtapi.Envelope_StreamPresenceEvent:
-		conn.notifyStreamPresenceEvent(v.StreamPresenceEvent)
+		conn.notifyStreamPresenceEvent(ctx, v.StreamPresenceEvent)
 	default:
 		return fmt.Errorf("unknown type %T", env.Message)
 	}
@@ -268,6 +271,10 @@ func (conn *Conn) recvResponse(env *rtapi.Envelope) error {
 	if v, ok := env.Message.(*rtapi.Envelope_Error); ok {
 		conn.h.Errf("Error: %+v", v.Error)
 		req.err <- NewRealtimeError(v.Error)
+		return nil
+	}
+	// ignore response for RPC
+	if req.v == nil {
 		return nil
 	}
 	// merge
@@ -305,36 +312,6 @@ func (conn *Conn) Close() error {
 		return conn.conn.Close(websocket.StatusGoingAway, "going away")
 	}
 	return nil
-}
-
-func (conn *Conn) notifyError(msg *rtapi.Error) {
-}
-
-func (conn *Conn) notifyChannelMessage(msg *nkapi.ChannelMessage) {
-}
-
-func (conn *Conn) notifyChannelPresenceEvent(msg *rtapi.ChannelPresenceEvent) {
-}
-
-func (conn *Conn) notifyMatchData(msg *rtapi.MatchData) {
-}
-
-func (conn *Conn) notifyMatchPresenceEvent(msg *rtapi.MatchPresenceEvent) {
-}
-
-func (conn *Conn) notifyMatchmakerMatched(msg *rtapi.MatchmakerMatched) {
-}
-
-func (conn *Conn) notifyNotifications(msg *rtapi.Notifications) {
-}
-
-func (conn *Conn) notifyStatusPresenceEvent(msg *rtapi.StatusPresenceEvent) {
-}
-
-func (conn *Conn) notifyStreamData(msg *rtapi.StreamData) {
-}
-
-func (conn *Conn) notifyStreamPresenceEvent(msg *rtapi.StreamPresenceEvent) {
 }
 
 // ChannelJoin sends a message to join a chat channel.
@@ -462,7 +439,7 @@ func (conn *Conn) MatchmakerRemoveAsync(ctx context.Context, ticket string, f fu
 }
 
 // MatchDataSend sends a message to send input to a multiplayer match.
-func (conn *Conn) MatchDataSend(ctx context.Context, matchId string, opCode OpType, data []byte, reliable bool, presences ...*UserPresenceMsg) error {
+func (conn *Conn) MatchDataSend(ctx context.Context, matchId string, opCode int64, data []byte, reliable bool, presences ...*UserPresenceMsg) error {
 	return MatchDataSend(matchId, opCode, data).
 		WithPresences(presences...).
 		WithReliable(reliable).
@@ -470,7 +447,7 @@ func (conn *Conn) MatchDataSend(ctx context.Context, matchId string, opCode OpTy
 }
 
 // MatchDataSendAsync sends a message to send input to a multiplayer match.
-func (conn *Conn) MatchDataSendAsync(ctx context.Context, matchId string, opCode OpType, data []byte, reliable bool, presences []*UserPresenceMsg, f func(error)) {
+func (conn *Conn) MatchDataSendAsync(ctx context.Context, matchId string, opCode int64, data []byte, reliable bool, presences []*UserPresenceMsg, f func(error)) {
 	MatchDataSend(matchId, opCode, data).
 		WithPresences(presences...).
 		WithReliable(reliable).
