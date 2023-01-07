@@ -3,11 +3,11 @@ module github.com/ascii8/nakama-go
 go 1.19
 
 require (
-	github.com/ascii8/nktest v0.8.0
+	github.com/ascii8/nktest v0.8.2
 	github.com/google/uuid v1.3.0
-	github.com/heroiclabs/nakama-common v1.25.0
+	github.com/heroiclabs/nakama-common v1.26.0
 	golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9
-	golang.org/x/net v0.2.0
+	golang.org/x/net v0.5.0
 	google.golang.org/grpc v1.51.0
 	google.golang.org/protobuf v1.28.1
 	nhooyr.io/websocket v1.8.7
@@ -22,9 +22,9 @@ require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
-	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
+	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
-	github.com/cilium/ebpf v0.9.2 // indirect
+	github.com/cilium/ebpf v0.9.3 // indirect
 	github.com/containerd/cgroups v1.0.4 // indirect
 	github.com/containerd/containerd v1.6.8 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.12.0 // indirect
@@ -63,7 +63,7 @@ require (
 	github.com/klauspost/compress v1.15.12 // indirect
 	github.com/klauspost/pgzip v1.2.6-0.20220930104621-17e8dac29df8 // indirect
 	github.com/kr/fs v0.1.0 // indirect
-	github.com/letsencrypt/boulder v0.0.0-20220926190731-46e41ca8bdf8 // indirect
+	github.com/letsencrypt/boulder v0.0.0-20221205202304-a90d9bff8dba // indirect
 	github.com/lib/pq v1.10.7 // indirect
 	github.com/manifoldco/promptui v0.9.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -87,7 +87,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/sftp v1.13.5 // indirect
 	github.com/proglottis/gpgme v0.1.3 // indirect
-	github.com/rivo/uniseg v0.4.2 // indirect
+	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/rs/zerolog v1.28.0 // indirect
 	github.com/sigstore/sigstore v1.4.2 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
@@ -110,12 +110,12 @@ require (
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.1.0 // indirect
-	golang.org/x/mod v0.6.0 // indirect
-	golang.org/x/sync v0.0.0-20220923202941-7f9b1623fab7 // indirect
-	golang.org/x/sys v0.2.0 // indirect
-	golang.org/x/term v0.2.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
-	golang.org/x/tools v0.2.0 // indirect
+	golang.org/x/mod v0.7.0 // indirect
+	golang.org/x/sync v0.1.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/term v0.4.0 // indirect
+	golang.org/x/text v0.6.0 // indirect
+	golang.org/x/tools v0.3.0 // indirect
 	google.golang.org/genproto v0.0.0-20220926165614-551eb538f295 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
