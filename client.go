@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -240,7 +239,7 @@ func (cl *Client) Marshal(v interface{}) (io.Reader, error) {
 func (cl *Client) Unmarshal(r io.Reader, v interface{}) error {
 	// protojson decode
 	if msg, ok := v.(proto.Message); ok {
-		buf, err := ioutil.ReadAll(r)
+		buf, err := io.ReadAll(r)
 		if err != nil {
 			return err
 		}
@@ -1049,6 +1048,26 @@ func (cl *Client) StorageObjectsAsync(ctx context.Context, req *StorageObjectsRe
 	req.Async(ctx, cl, f)
 }
 
+// Subscription retrieves subscription by product id.
+func (cl *Client) Subscription(ctx context.Context, productId string) (*SubscriptionResponse, error) {
+	return Subscription(productId).Do(ctx, cl)
+}
+
+// SubscriptionAsync retrieves subscription by product id.
+func (cl *Client) SubscriptionAsync(ctx context.Context, productId string, f func(*SubscriptionResponse, error)) {
+	Subscription(productId).Async(ctx, cl, f)
+}
+
+// Subscriptions retrieves subscriptions.
+func (cl *Client) Subscriptions(ctx context.Context, req *SubscriptionsRequest) (*SubscriptionsResponse, error) {
+	return req.Do(ctx, cl)
+}
+
+// SubscriptionsAsync retrieves subscriptions.
+func (cl *Client) SubscriptionsAsync(ctx context.Context, req *SubscriptionsRequest, f func(*SubscriptionsResponse, error)) {
+	req.Async(ctx, cl, f)
+}
+
 // Tournaments retrieves tournaments.
 func (cl *Client) Tournaments(ctx context.Context, req *TournamentsRequest) (*TournamentsResponse, error) {
 	return req.Do(ctx, cl)
@@ -1249,6 +1268,26 @@ func (cl *Client) ValidatePurchaseHuawei(ctx context.Context, purchase, signatur
 // ValidatePurchaseHuawei validates a Huawei purchase.
 func (cl *Client) ValidatePurchaseHuaweiAsync(ctx context.Context, purchase, signature string, persist bool, f func(*ValidatePurchaseResponse, error)) {
 	ValidatePurchaseHuawei(purchase, signature).WithPersist(persist).Async(ctx, cl, f)
+}
+
+// ValidateSubscriptionApple validates a Apple subscription.
+func (cl *Client) ValidateSubscriptionApple(ctx context.Context, receipt string, persist bool) (*ValidateSubscriptionResponse, error) {
+	return ValidateSubscriptionApple(receipt).WithPersist(persist).Do(ctx, cl)
+}
+
+// ValidateSubscriptionApple validates a Apple subscription.
+func (cl *Client) ValidateSubscriptionAppleAsync(ctx context.Context, receipt string, persist bool, f func(*ValidateSubscriptionResponse, error)) {
+	ValidateSubscriptionApple(receipt).WithPersist(persist).Async(ctx, cl, f)
+}
+
+// ValidateSubscriptionGoogle validates a Google subscription.
+func (cl *Client) ValidateSubscriptionGoogle(ctx context.Context, receipt string, persist bool) (*ValidateSubscriptionResponse, error) {
+	return ValidateSubscriptionGoogle(receipt).WithPersist(persist).Do(ctx, cl)
+}
+
+// ValidateSubscriptionGoogle validates a Google subscription.
+func (cl *Client) ValidateSubscriptionGoogleAsync(ctx context.Context, receipt string, persist bool, f func(*ValidateSubscriptionResponse, error)) {
+	ValidateSubscriptionGoogle(receipt).WithPersist(persist).Async(ctx, cl, f)
 }
 
 // WriteLeaderboardRecord writes a leaderboard record.

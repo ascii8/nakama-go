@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -153,7 +153,7 @@ func (conn *Conn) run(ctx context.Context) {
 				conn.h.Errf("reader error: %v", err)
 				continue
 			}
-			buf, err := ioutil.ReadAll(r)
+			buf, err := io.ReadAll(r)
 			if err != nil {
 				conn.h.Errf("unable to read message: %v", err)
 				continue

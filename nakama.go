@@ -19,10 +19,8 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-/*
-
 // StoreProviderType is the store provider type.
-type StoreProviderType = nkapi.StoreProvider_Type
+type StoreProviderType = nkapi.StoreProvider
 
 // StoreProviderType values.
 const (
@@ -33,11 +31,9 @@ const (
 	// Huawei App Gallery
 	StoreProviderHuawei StoreProviderType = nkapi.StoreProvider_HUAWEI_APP_GALLERY
 )
-*/
 
-/*
 // StoreEnvironmentType is the store environment type.
-type StoreEnvironmentType = nkapi.StoreEnvironment_Type
+type StoreEnvironmentType = nkapi.StoreEnvironment
 
 // StoreEnvironmentType values.
 const (
@@ -48,7 +44,6 @@ const (
 	// Production environment.
 	StoreEnvironmentProduction StoreEnvironmentType = nkapi.StoreEnvironment_PRODUCTION
 )
-*/
 
 // OpType is the operator type.
 type OpType = nkapi.Operator
@@ -2456,16 +2451,17 @@ func (req *ValidatePurchaseHuaweiRequest) Async(ctx context.Context, cl *Client,
 	}()
 }
 
-/*
 // SubscriptionsRequest is a request to retrieve subscriptions.
 type SubscriptionsRequest struct {
-	nkapi.SubscriptionsRequest
+	nkapi.ListSubscriptionsRequest
 }
 
 // Subscriptions creates a request to retrieve subscriptions.
 func Subscriptions(groupId string) *SubscriptionsRequest {
 	return &SubscriptionsRequest{
-		Limit: wrapperspb.Int32(100),
+		ListSubscriptionsRequest: nkapi.ListSubscriptionsRequest{
+			Limit: wrapperspb.Int32(100),
+		},
 	}
 }
 
@@ -2507,7 +2503,7 @@ func (req *SubscriptionsRequest) Async(ctx context.Context, cl *Client, f func(*
 // SubscriptionsResponse is the Subscriptions response.
 type SubscriptionsResponse = nkapi.SubscriptionList
 
-// ValidateSubscriptionResponse is the ValidateSubscriptionApple response.
+// ValidateSubscriptionResponse is the validate subscription response.
 type ValidateSubscriptionResponse = nkapi.ValidateSubscriptionResponse
 
 // ValidateSubscriptionAppleRequest is a request to validate Apple subscriptions.
@@ -2516,15 +2512,12 @@ type ValidateSubscriptionAppleRequest struct {
 }
 
 // ValidateSubscriptionApple creates a request to validate Apple subscriptions.
-func ValidateSubscriptionApple() *ValidateSubscriptionAppleRequest {
+func ValidateSubscriptionApple(receipt string) *ValidateSubscriptionAppleRequest {
 	return &ValidateSubscriptionAppleRequest{
+		ValidateSubscriptionAppleRequest: nkapi.ValidateSubscriptionAppleRequest{
+			Receipt: receipt,
+		},
 	}
-}
-
-// WithReceipt sets the receipt on the request.
-func (req *ValidateSubscriptionAppleRequest) WithReceipt(receipt string) *ValidateSubscriptionAppleRequest {
-	req.Receipt = receipt
-	return req
 }
 
 // WithPersist sets the persist on the request.
@@ -2555,15 +2548,12 @@ type ValidateSubscriptionGoogleRequest struct {
 }
 
 // ValidateSubscriptionGoogle creates a request to validate a Google subscription.
-func ValidateSubscriptionGoogle() *ValidateSubscriptionGoogleRequest {
+func ValidateSubscriptionGoogle(receipt string) *ValidateSubscriptionGoogleRequest {
 	return &ValidateSubscriptionGoogleRequest{
+		ValidateSubscriptionGoogleRequest: nkapi.ValidateSubscriptionGoogleRequest{
+			Receipt: receipt,
+		},
 	}
-}
-
-// WithReceipt sets the receipt on the request.
-func (req *ValidateSubscriptionGoogleRequest) WithReceipt(receipt string) *ValidateSubscriptionGoogleRequest {
-	req.Receipt = receipt
-	return req
 }
 
 // WithPersist sets the persist on the request.
@@ -2587,34 +2577,24 @@ func (req *ValidateSubscriptionGoogleRequest) Async(ctx context.Context, cl *Cli
 		f(req.Do(ctx, cl))
 	}()
 }
-*/
 
-/*
 // SubscriptionRequest is a request to retrieve a subscription.
 type SubscriptionRequest struct {
 	nkapi.GetSubscriptionRequest
 }
 
-// Subscription creates a request to retrieve a subscription.
-ex/ WriteLeaderboardRecord writes a leaderboard record.
-func (cl *Client) WriteLeaderboardRecord(ctx context.Context, req *WriteLeaderboardRecordRequest) (*WriteLeaderboardRecordResponse, error) {
-	return req.Do(ctx, cl)
-}
-
-// WriteLeaderboardRecordAsync writes a leaderboard record.
-func (cl *Client) WriteLeaderboardRecordAsync(ctx context.Context, req *WriteLeaderboardRecordRequest, f func(*WriteLeaderboardRecordResponse, error)) {
-	req.Async(ctx, cl, f)
-}
 func Subscription(productId string) *SubscriptionRequest {
 	return &SubscriptionRequest{
-		ProductId: productId,
+		GetSubscriptionRequest: nkapi.GetSubscriptionRequest{
+			ProductId: productId,
+		},
 	}
 }
 
 // Do executes the request against the context and client.
 func (req *SubscriptionRequest) Do(ctx context.Context, cl *Client) (*SubscriptionResponse, error) {
 	res := new(SubscriptionResponse)
-	if err := cl.Do(ctx, "GET", "v2/iap/subscription/"+req.ProductId, nil, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/iap/subscription/"+req.ProductId, true, nil, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -2629,8 +2609,6 @@ func (req *SubscriptionRequest) Async(ctx context.Context, cl *Client, f func(*S
 
 // SubscriptionResponse is a Subscription response.
 type SubscriptionResponse = nkapi.ValidatedSubscription
-
-*/
 
 // LeaderboardRecordsRequest is a request to retrieve the leaderboard records.
 type LeaderboardRecordsRequest struct {
