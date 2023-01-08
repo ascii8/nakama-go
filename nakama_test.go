@@ -181,7 +181,7 @@ func TestMatch(t *testing.T) {
 		case len(msg.Joins) != 1:
 			t.Fatalf("expected 1 join, got: %d", len(msg.Joins))
 		case msg.Joins[0].UserId != a2.User.Id:
-			t.Logf(">>> msg: %+v", msg)
+			// t.Logf("msg: %+v", msg)
 			// t.Fatalf("expected msg.Joins[0].UserId (%s) == a2.User.Id (%s)", msg.Joins[0].UserId, a2.User.Id)
 		}
 	}
