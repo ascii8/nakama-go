@@ -651,46 +651,6 @@ func (conn *Conn) StatusUpdateAsync(ctx context.Context, status string, f func(e
 		Async(ctx, conn, f)
 }
 
-// OnConnect adds a connect callback.
-func (conn *Conn) OnConnect(ctx context.Context, f func()) {
-}
-
-// OnDisconnect adds a disconnect callback.
-func (conn *Conn) OnDisconnect(ctx context.Context, f func()) {
-}
-
-// OnError adds an error callback.
-func (conn *Conn) OnError(ctx context.Context, f func(*ErrorMsg)) {
-}
-
-// OnChannelMessage adds a channel message callback.
-func (conn *Conn) OnChannelMessage(ctx context.Context, f func(*ChannelMessageMsg)) {
-}
-
-// OnChannelPresence adds a channel presence callback.
-func (conn *Conn) OnChannelPresenceEvent(ctx context.Context, f func(*ChannelPresenceEventMsg)) {
-}
-
-// OnMatchPresence adds a match presence callback.
-func (conn *Conn) OnMatchPresenceEvent(ctx context.Context, f func(*MatchPresenceEventMsg)) {
-}
-
-// OnNotifications adds a notifications callback.
-func (conn *Conn) OnNotifications(ctx context.Context, f func(*NotificationsMsg)) {
-}
-
-// OnStatusPresence adds a status presence callback.
-func (conn *Conn) OnStatusPresenceEvent(ctx context.Context, f func(*StatusPresenceEventMsg)) {
-}
-
-// OnStreamPresence adds a stream presence callback.
-func (conn *Conn) OnStreamPresenceEvent(ctx context.Context, f func(*StreamPresenceEventMsg)) {
-}
-
-// OnStreamData adds a stream data callback.
-func (conn *Conn) OnStreamData(ctx context.Context, f func(*StreamDataMsg)) {
-}
-
 // req wraps a request and results.
 type req struct {
 	msg EnvelopeBuilder

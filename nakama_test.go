@@ -117,6 +117,93 @@ func TestPing(t *testing.T) {
 	}
 }
 
+func TestMatch(t *testing.T) {
+	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
+	defer cancel()
+	cl1 := newClient(ctx, t, nk, WithServerKey(nk.ServerKey()))
+	conn1 := createAccountAndConn(ctx, t, cl1)
+	defer conn1.Close()
+	a1, err := cl1.Account(ctx)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	t.Logf("account1: %+v", a1)
+	joinCh := make(chan *MatchPresenceEventMsg, 1)
+	defer close(joinCh)
+	conn1.MatchPresenceEventHandler = func(_ context.Context, msg *MatchPresenceEventMsg) {
+		joinCh <- msg
+	}
+	m1, err := conn1.MatchCreate(ctx, "")
+	switch {
+	case err != nil:
+		t.Fatalf("expected no error, got: %v", err)
+	case m1.MatchId == "":
+		t.Fatalf("expected non-empty m1.MatchId")
+	case m1.Authoritative:
+		t.Errorf("expected m1.Authoritative == false")
+	case m1.Size == 0:
+		t.Errorf("expected m1.Size != 0")
+	case m1.Self.UserId != a1.User.Id:
+		t.Errorf("expected m1.Self.UserId == a1.User.Id")
+	}
+	for _, p := range m1.Presences {
+		t.Logf("p %s: %v", p.UserId, p.Status)
+	}
+	cl2 := newClient(ctx, t, nk, WithServerKey(nk.ServerKey()))
+	conn2 := createAccountAndConn(ctx, t, cl2)
+	defer conn2.Close()
+	dataCh := make(chan *MatchDataMsg, 1)
+	defer close(dataCh)
+	conn2.MatchDataHandler = func(_ context.Context, msg *MatchDataMsg) {
+		dataCh <- msg
+	}
+	m2, err := conn2.MatchJoin(ctx, m1.MatchId, nil)
+	switch {
+	case err != nil:
+		t.Fatalf("expected no error, got: %v", err)
+	case m2.MatchId == "":
+		t.Fatalf("expected non-empty m2.MatchId")
+	case m1.MatchId != m1.MatchId:
+		t.Errorf("expected m1.MatchId == m2.MatchId")
+	case m2.Authoritative:
+		t.Errorf("expected m2.Authoritative == false")
+	}
+	a2, err := cl2.Account(ctx)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	t.Logf("account2: %+v", a2)
+	select {
+	case <-ctx.Done():
+		t.Fatalf("context closed: %v", ctx.Err())
+	case msg := <-joinCh:
+		switch {
+		case len(msg.Joins) != 1:
+			t.Fatalf("expected 1 join, got: %d", len(msg.Joins))
+		case msg.Joins[0].UserId != a2.User.Id:
+			t.Logf(">>> msg: %+v", msg)
+			// t.Fatalf("expected msg.Joins[0].UserId (%s) == a2.User.Id (%s)", msg.Joins[0].UserId, a2.User.Id)
+		}
+	}
+	if err := conn1.MatchDataSend(ctx, m1.MatchId, 1, []byte(`hello world`), true); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	select {
+	case <-ctx.Done():
+		t.Fatalf("context closed: %v", ctx.Err())
+	case msg := <-dataCh:
+		if s, exp := string(msg.Data), "hello world"; s != exp {
+			t.Errorf("expected %q, got: %q", exp, s)
+		}
+	}
+	if err := conn1.MatchLeave(ctx, m1.MatchId); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if err := conn2.MatchLeave(ctx, m2.MatchId); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+}
+
 func TestRpcRealtime(t *testing.T) {
 }
 
