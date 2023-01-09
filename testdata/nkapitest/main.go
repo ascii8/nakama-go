@@ -30,11 +30,11 @@ func dailyRewards(ctx context.Context, logger runtime.Logger, db *sql.DB, nk run
 	if err := dec.Decode(&req); err != nil {
 		return "", err
 	}
-	logger.WithField("req", req).Info("dailyRewards")
+	logger.WithField("req", req).Debug("dailyRewards")
 	res := Rewards{
 		Rewards: req.Rewards * 2,
 	}
-	logger.WithField("res", res).Info("dailyRewards")
+	logger.WithField("res", res).Debug("dailyRewards")
 	// encode response
 	buf, err := json.Marshal(res)
 	if err != nil {
@@ -52,12 +52,12 @@ func protoTest(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtim
 	if err := protojson.Unmarshal([]byte(payloadstr), req); err != nil {
 		return "", fmt.Errorf("unable to unmarshal protobuf message: %w", err)
 	}
-	logger.WithField("req", req).Info("protoTest")
+	logger.WithField("req", req).Debug("protoTest")
 	res := &testpb.Test{
 		AString: "hello " + req.AString,
 		AInt:    2 * req.AInt,
 	}
-	logger.WithField("res", res).Info("protoTest")
+	logger.WithField("res", res).Debug("protoTest")
 	buf, err := protojson.Marshal(res)
 	if err != nil {
 		return "", err
