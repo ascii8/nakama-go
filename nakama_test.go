@@ -8,7 +8,6 @@ import (
 
 	"github.com/ascii8/nktest"
 	"github.com/google/uuid"
-	nkapi "github.com/heroiclabs/nakama-common/api"
 	"golang.org/x/exp/slices"
 )
 
@@ -250,7 +249,7 @@ func createAccount(ctx context.Context, t *testing.T, cl *Client) {
 	if len(res.Devices) == 0 {
 		t.Fatalf("expected there to be at least one device")
 	}
-	i := slices.IndexFunc(res.Devices, func(d *nkapi.AccountDevice) bool {
+	i := slices.IndexFunc(res.Devices, func(d *AccountDevice) bool {
 		return d.Id == deviceId
 	})
 	if i == -1 {

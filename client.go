@@ -1008,13 +1008,13 @@ func (cl *Client) LeaderboardRecordsAsync(ctx context.Context, req *LeaderboardR
 }
 
 // LeaderboardRecordsAroundOwner retrieves leaderboard records around owner.
-func (cl *Client) LeaderboardRecordsAroundOwner(ctx context.Context, req *LeaderboardRecordsAroundOwnerRequest) (*LeaderboardRecordsAroundOwnerResponse, error) {
+func (cl *Client) LeaderboardRecordsAroundOwner(ctx context.Context, req *LeaderboardRecordsAroundOwnerRequest) (*LeaderboardRecordsResponse, error) {
 	return req.Do(ctx, cl)
 }
 
 // LeaderboardRecordsAroundOwnerAsync retrieves leaderboard records around
 // owner.
-func (cl *Client) LeaderboardRecordsAroundOwnerAsync(ctx context.Context, req *LeaderboardRecordsAroundOwnerRequest, f func(*LeaderboardRecordsAroundOwnerResponse, error)) {
+func (cl *Client) LeaderboardRecordsAroundOwnerAsync(ctx context.Context, req *LeaderboardRecordsAroundOwnerRequest, f func(*LeaderboardRecordsResponse, error)) {
 	req.Async(ctx, cl, f)
 }
 
@@ -1089,12 +1089,12 @@ func (cl *Client) TournamentRecordsAsync(ctx context.Context, req *TournamentRec
 }
 
 // TournamentRecordsAroundOwner retrieves tournament records around owner.
-func (cl *Client) TournamentRecordsAroundOwner(ctx context.Context, req *TournamentRecordsAroundOwnerRequest) (*TournamentRecordsAroundOwnerResponse, error) {
+func (cl *Client) TournamentRecordsAroundOwner(ctx context.Context, req *TournamentRecordsAroundOwnerRequest) (*TournamentRecordsResponse, error) {
 	return req.Do(ctx, cl)
 }
 
 // TournamentRecordsAroundOwnerAsync retrieves tournament records around owner.
-func (cl *Client) TournamentRecordsAroundOwnerAsync(ctx context.Context, req *TournamentRecordsAroundOwnerRequest, f func(*TournamentRecordsAroundOwnerResponse, error)) {
+func (cl *Client) TournamentRecordsAroundOwnerAsync(ctx context.Context, req *TournamentRecordsAroundOwnerRequest, f func(*TournamentRecordsResponse, error)) {
 	req.Async(ctx, cl, f)
 }
 

@@ -1,6 +1,8 @@
 // Package nakama is a nakama http and realtime websocket client.
 package nakama
 
+//go:generate protoc -I. --go_out=. --go_opt=paths=source_relative nakama.proto realtime.proto
+
 import (
 	"bytes"
 	"context"
@@ -12,88 +14,10 @@ import (
 	"sync"
 	"time"
 
-	nkapi "github.com/heroiclabs/nakama-common/api"
-	rtapi "github.com/heroiclabs/nakama-common/rtapi"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
-
-// StoreProviderType is the store provider type.
-type StoreProviderType = nkapi.StoreProvider
-
-// StoreProviderType values.
-const (
-	// Apple App Store
-	StoreProviderApple StoreProviderType = nkapi.StoreProvider_APPLE_APP_STORE
-	// Google Play Store
-	StoreProviderGoogle StoreProviderType = nkapi.StoreProvider_GOOGLE_PLAY_STORE
-	// Huawei App Gallery
-	StoreProviderHuawei StoreProviderType = nkapi.StoreProvider_HUAWEI_APP_GALLERY
-)
-
-// StoreEnvironmentType is the store environment type.
-type StoreEnvironmentType = nkapi.StoreEnvironment
-
-// StoreEnvironmentType values.
-const (
-	// Unknown environment.
-	StoreEnvironmentUnknown StoreEnvironmentType = nkapi.StoreEnvironment_UNKNOWN
-	// Sandbox/test environment.
-	StoreEnvironmentSandbox StoreEnvironmentType = nkapi.StoreEnvironment_SANDBOX
-	// Production environment.
-	StoreEnvironmentProduction StoreEnvironmentType = nkapi.StoreEnvironment_PRODUCTION
-)
-
-// OpType is the operator type.
-type OpType = nkapi.Operator
-
-// OpType values.
-const (
-	// Do not override the leaderboard operator.
-	OpNoOverride OpType = nkapi.Operator_NO_OVERRIDE
-	// Override the leaderboard operator with BEST.
-	OpBest OpType = nkapi.Operator_BEST
-	// Override the leaderboard operator with SET.
-	OpSet OpType = nkapi.Operator_SET
-	// Override the leaderboard operator with INCREMENT.
-	OpIncrement OpType = nkapi.Operator_INCREMENT
-	// Override the leaderboard operator with DECREMENT.
-	OpDecrement OpType = nkapi.Operator_DECREMENT
-)
-
-// FriendState is the friend state type.
-type FriendState = nkapi.Friend_State
-
-// FriendState values.
-const (
-	// The user is a friend of the current user.
-	FriendFriend FriendState = nkapi.Friend_FRIEND
-	// The current user has sent an invite to the user.
-	FriendInviteSent FriendState = nkapi.Friend_INVITE_SENT
-	// The current user has received an invite from this user.
-	FriendInviteReceived FriendState = nkapi.Friend_INVITE_RECEIVED
-	// The current user has blocked this user.
-	FriendBlocked FriendState = nkapi.Friend_BLOCKED
-)
-
-// GroupUserState is the group user state type.
-type GroupUserState = nkapi.GroupUserList_GroupUser_State
-
-// GroupUserState values.
-const (
-	// The user is a superadmin with full control of the group.
-	GroupUserSuperadmin = nkapi.GroupUserList_GroupUser_SUPERADMIN
-	// The user is an admin with additional privileges.
-	GroupUserAdmin = nkapi.GroupUserList_GroupUser_ADMIN
-	// The user is a regular member.
-	GroupUserMember = nkapi.GroupUserList_GroupUser_MEMBER
-	// The user has requested to join the group
-	GroupUserJoinRequest = nkapi.GroupUserList_GroupUser_JOIN_REQUEST
-)
-
-// HealthcheckRequest is a healthcheck request.
-type HealthcheckRequest struct{}
 
 // Healthcheck creates a new healthcheck request.
 func Healthcheck() *HealthcheckRequest {
@@ -112,9 +36,6 @@ func (req *HealthcheckRequest) Async(ctx context.Context, cl *Client, f func(err
 	}()
 }
 
-// AccountRequest is a request to retrieve the user's account.
-type AccountRequest struct{}
-
 // Account creates a request to retrieve the user's account.
 func Account() *AccountRequest {
 	return &AccountRequest{}
@@ -122,7 +43,7 @@ func Account() *AccountRequest {
 
 // Do executes the request against the context and client.
 func (req *AccountRequest) Do(ctx context.Context, cl *Client) (*AccountResponse, error) {
-	res := new(nkapi.Account)
+	res := new(AccountResponse)
 	if err := cl.Do(ctx, "GET", "v2/account", true, nil, nil, res); err != nil {
 		return nil, err
 	}
@@ -134,14 +55,6 @@ func (req *AccountRequest) Async(ctx context.Context, cl *Client, f func(*Accoun
 	go func() {
 		f(req.Do(ctx, cl))
 	}()
-}
-
-// AccountResponse is the account response.
-type AccountResponse = nkapi.Account
-
-// UpdateAccountRequest is a request to update the user's account.
-type UpdateAccountRequest struct {
-	nkapi.UpdateAccountRequest
 }
 
 // UpdateAccount creates a request to update the user's account.
@@ -197,23 +110,12 @@ func (req *UpdateAccountRequest) Async(ctx context.Context, cl *Client, f func(e
 	}()
 }
 
-// SessionResponse is the authenticate response.
-type SessionResponse = nkapi.Session
-
-// AuthenticateAppleRequest is a request to authenticate a user with an Apple
-// token.
-type AuthenticateAppleRequest struct {
-	nkapi.AuthenticateAppleRequest
-}
-
 // AuthenticateApple creates a request to authenticate a user with an Apple
 // token.
 func AuthenticateApple(token string) *AuthenticateAppleRequest {
 	return &AuthenticateAppleRequest{
-		AuthenticateAppleRequest: nkapi.AuthenticateAppleRequest{
-			Account: &nkapi.AccountApple{
-				Token: token,
-			},
+		Account: &AccountApple{
+			Token: token,
 		},
 	}
 }
@@ -259,20 +161,12 @@ func (req *AuthenticateAppleRequest) Async(ctx context.Context, cl *Client, f fu
 	}()
 }
 
-// AuthenticateCustomRequest is a request to authenticate a user id against the
-// server.
-type AuthenticateCustomRequest struct {
-	nkapi.AuthenticateCustomRequest
-}
-
 // AuthenticateCustom creates a request to authenicate a user id against the
 // server.
 func AuthenticateCustom(id string) *AuthenticateCustomRequest {
 	return &AuthenticateCustomRequest{
-		AuthenticateCustomRequest: nkapi.AuthenticateCustomRequest{
-			Account: &nkapi.AccountCustom{
-				Id: id,
-			},
+		Account: &AccountCustom{
+			Id: id,
 		},
 	}
 }
@@ -318,20 +212,12 @@ func (req *AuthenticateCustomRequest) Async(ctx context.Context, cl *Client, f f
 	}()
 }
 
-// AuthenticateDeviceRequest is a request to authenticate a user with a device
-// id.
-type AuthenticateDeviceRequest struct {
-	nkapi.AuthenticateDeviceRequest
-}
-
 // AuthenticateDevice creates a request to authenticate a user with a device
 // id.
 func AuthenticateDevice(id string) *AuthenticateDeviceRequest {
 	return &AuthenticateDeviceRequest{
-		AuthenticateDeviceRequest: nkapi.AuthenticateDeviceRequest{
-			Account: &nkapi.AccountDevice{
-				Id: id,
-			},
+		Account: &AccountDevice{
+			Id: id,
 		},
 	}
 }
@@ -377,21 +263,13 @@ func (req *AuthenticateDeviceRequest) Async(ctx context.Context, cl *Client, f f
 	}()
 }
 
-// AuthenticateEmailRequest is a request to authenticate a user with an
-// email/password against the server.
-type AuthenticateEmailRequest struct {
-	nkapi.AuthenticateEmailRequest
-}
-
 // AuthenticateEmail creates a request to authenticate a user with an email and
 // password.
 func AuthenticateEmail(email, password string) *AuthenticateEmailRequest {
 	return &AuthenticateEmailRequest{
-		AuthenticateEmailRequest: nkapi.AuthenticateEmailRequest{
-			Account: &nkapi.AccountEmail{
-				Email:    email,
-				Password: password,
-			},
+		Account: &AccountEmail{
+			Email:    email,
+			Password: password,
 		},
 	}
 }
@@ -437,20 +315,12 @@ func (req *AuthenticateEmailRequest) Async(ctx context.Context, cl *Client, f fu
 	}()
 }
 
-// AuthenticateFacebookRequest is a request to authenticate a user with a
-// Facebook token.
-type AuthenticateFacebookRequest struct {
-	nkapi.AuthenticateFacebookRequest
-}
-
 // AuthenticateFacebook creates a request to authenticate a user with a
 // Facebook token.
 func AuthenticateFacebook(token string) *AuthenticateFacebookRequest {
 	return &AuthenticateFacebookRequest{
-		AuthenticateFacebookRequest: nkapi.AuthenticateFacebookRequest{
-			Account: &nkapi.AccountFacebook{
-				Token: token,
-			},
+		Account: &AccountFacebook{
+			Token: token,
 		},
 	}
 }
@@ -505,20 +375,12 @@ func (req *AuthenticateFacebookRequest) Async(ctx context.Context, cl *Client, f
 	}()
 }
 
-// AuthenticateFacebookInstantGameRequest is a request to authenticate a user
-// with a Facebook Instant Game token.
-type AuthenticateFacebookInstantGameRequest struct {
-	nkapi.AuthenticateFacebookInstantGameRequest
-}
-
 // AuthenticateFacebookInstantGame creates a request to authenticate a user
 // with a Facebook Instant Game token.
 func AuthenticateFacebookInstantGame(signedPlayerInfo string) *AuthenticateFacebookInstantGameRequest {
 	return &AuthenticateFacebookInstantGameRequest{
-		AuthenticateFacebookInstantGameRequest: nkapi.AuthenticateFacebookInstantGameRequest{
-			Account: &nkapi.AccountFacebookInstantGame{
-				SignedPlayerInfo: signedPlayerInfo,
-			},
+		Account: &AccountFacebookInstantGame{
+			SignedPlayerInfo: signedPlayerInfo,
 		},
 	}
 }
@@ -564,19 +426,11 @@ func (req *AuthenticateFacebookInstantGameRequest) Async(ctx context.Context, cl
 	}()
 }
 
-// AuthenticateGameCenterRequest is a request to authenticate a user with a
-// Apple GameCenter token.
-type AuthenticateGameCenterRequest struct {
-	nkapi.AuthenticateGameCenterRequest
-}
-
 // AuthenticateGameCenter creates a request to authenticate a user with a Apple
 // GameCenter token.
 func AuthenticateGameCenter() *AuthenticateGameCenterRequest {
 	return &AuthenticateGameCenterRequest{
-		AuthenticateGameCenterRequest: nkapi.AuthenticateGameCenterRequest{
-			Account: &nkapi.AccountGameCenter{},
-		},
+		Account: &AccountGameCenter{},
 	}
 }
 
@@ -657,20 +511,12 @@ func (req *AuthenticateGameCenterRequest) Async(ctx context.Context, cl *Client,
 	}()
 }
 
-// AuthenticateGoogleRequest is a request to authenticate a user with a Google
-// token.
-type AuthenticateGoogleRequest struct {
-	nkapi.AuthenticateGoogleRequest
-}
-
 // AuthenticateGoogle creates a request to authenicate a user with a Google
 // token.
 func AuthenticateGoogle(token string) *AuthenticateGoogleRequest {
 	return &AuthenticateGoogleRequest{
-		AuthenticateGoogleRequest: nkapi.AuthenticateGoogleRequest{
-			Account: &nkapi.AccountGoogle{
-				Token: token,
-			},
+		Account: &AccountGoogle{
+			Token: token,
 		},
 	}
 }
@@ -716,20 +562,12 @@ func (req *AuthenticateGoogleRequest) Async(ctx context.Context, cl *Client, f f
 	}()
 }
 
-// AuthenticateSteamRequest is a request to authenticate a user with a Steam
-// token.
-type AuthenticateSteamRequest struct {
-	nkapi.AuthenticateSteamRequest
-}
-
 // AuthenticateSteam creates a request to authenticate a user with a Steam
 // token.
 func AuthenticateSteam(token string) *AuthenticateSteamRequest {
 	return &AuthenticateSteamRequest{
-		AuthenticateSteamRequest: nkapi.AuthenticateSteamRequest{
-			Account: &nkapi.AccountSteam{
-				Token: token,
-			},
+		Account: &AccountSteam{
+			Token: token,
 		},
 	}
 }
@@ -786,13 +624,13 @@ func (req *AuthenticateSteamRequest) Async(ctx context.Context, cl *Client, f fu
 
 // LinkAppleRequest is a request to add a Apple token to the user's account.
 type LinkAppleRequest struct {
-	nkapi.AccountApple
+	AccountApple
 }
 
 // LinkApple creates a request to add a Apple token to the user's account.
 func LinkApple(token string) *LinkAppleRequest {
 	return &LinkAppleRequest{
-		AccountApple: nkapi.AccountApple{
+		AccountApple: AccountApple{
 			Token: token,
 		},
 	}
@@ -824,13 +662,13 @@ func (req *LinkAppleRequest) Async(ctx context.Context, cl *Client, f func(error
 
 // LinkCustomRequest is a request to add a custom id to the user's account.
 type LinkCustomRequest struct {
-	nkapi.AccountCustom
+	AccountCustom
 }
 
 // LinkCustom creates a request to add a custom id to the user's account.
 func LinkCustom(id string) *LinkCustomRequest {
 	return &LinkCustomRequest{
-		AccountCustom: nkapi.AccountCustom{
+		AccountCustom: AccountCustom{
 			Id: id,
 		},
 	}
@@ -856,13 +694,13 @@ func (req *LinkCustomRequest) Async(ctx context.Context, cl *Client, f func(erro
 
 // LinkDeviceRequest is a request to add a device id to a user's account.
 type LinkDeviceRequest struct {
-	nkapi.AccountDevice
+	AccountDevice
 }
 
 // LinkDevice creates a request to add a device id to a user's account.
 func LinkDevice(id string) *LinkDeviceRequest {
 	return &LinkDeviceRequest{
-		AccountDevice: nkapi.AccountDevice{
+		AccountDevice: AccountDevice{
 			Id: id,
 		},
 	}
@@ -888,13 +726,13 @@ func (req *LinkDeviceRequest) Async(ctx context.Context, cl *Client, f func(erro
 
 // LinkEmailRequest is a request to add a email/password to the user's account.
 type LinkEmailRequest struct {
-	nkapi.AccountEmail
+	AccountEmail
 }
 
 // LinkEmail creates a request to add a email/password to the user's account.
 func LinkEmail(email, password string) *LinkEmailRequest {
 	return &LinkEmailRequest{
-		AccountEmail: nkapi.AccountEmail{
+		AccountEmail: AccountEmail{
 			Email:    email,
 			Password: password,
 		},
@@ -919,20 +757,12 @@ func (req *LinkEmailRequest) Async(ctx context.Context, cl *Client, f func(error
 	}()
 }
 
-// LinkFacebookRequest is a request to add a Facebook token to the user's
-// account.
-type LinkFacebookRequest struct {
-	nkapi.LinkFacebookRequest
-}
-
 // LinkFacebook creates a request to add a Facebook token to the user's
 // account.
 func LinkFacebook(token string) *LinkFacebookRequest {
 	return &LinkFacebookRequest{
-		LinkFacebookRequest: nkapi.LinkFacebookRequest{
-			Account: &nkapi.AccountFacebook{
-				Token: token,
-			},
+		Account: &AccountFacebook{
+			Token: token,
 		},
 	}
 }
@@ -968,14 +798,14 @@ func (req *LinkFacebookRequest) Async(ctx context.Context, cl *Client, f func(er
 // LinkFacebookInstantGameRequest is a request to add Facebook Instant Game
 // token to the user's account.
 type LinkFacebookInstantGameRequest struct {
-	nkapi.AccountFacebookInstantGame
+	AccountFacebookInstantGame
 }
 
 // LinkFacebookInstantGame creates a request to add Facebook Instant Game token
 // to the user's account.
 func LinkFacebookInstantGame(signedPlayerInfo string) *LinkFacebookInstantGameRequest {
 	return &LinkFacebookInstantGameRequest{
-		AccountFacebookInstantGame: nkapi.AccountFacebookInstantGame{
+		AccountFacebookInstantGame: AccountFacebookInstantGame{
 			SignedPlayerInfo: signedPlayerInfo,
 		},
 	}
@@ -1002,7 +832,7 @@ func (req *LinkFacebookInstantGameRequest) Async(ctx context.Context, cl *Client
 // LinkGameCenterRequest is a request to add a Apple GameCenter token to a
 // user's account.
 type LinkGameCenterRequest struct {
-	nkapi.AccountGameCenter
+	AccountGameCenter
 }
 
 // LinkGameCenter creates a request to add a Apple GameCenter token to a user's
@@ -1067,13 +897,13 @@ func (req *LinkGameCenterRequest) Async(ctx context.Context, cl *Client, f func(
 
 // LinkGoogleRequest is a request to add a Google token to a user's account.
 type LinkGoogleRequest struct {
-	nkapi.AccountGoogle
+	AccountGoogle
 }
 
 // LinkGoogle creates a request to add a Google token to a user's account.
 func LinkGoogle(token string) *LinkGoogleRequest {
 	return &LinkGoogleRequest{
-		AccountGoogle: nkapi.AccountGoogle{
+		AccountGoogle: AccountGoogle{
 			Token: token,
 		},
 	}
@@ -1097,18 +927,11 @@ func (req *LinkGoogleRequest) Async(ctx context.Context, cl *Client, f func(erro
 	}()
 }
 
-// LinkSteamRequest is a request adds a Steam token to a user's account.
-type LinkSteamRequest struct {
-	nkapi.LinkSteamRequest
-}
-
 // LinkSteam creates a request adds a Steam token to a user's account.
 func LinkSteam(token string) *LinkSteamRequest {
 	return &LinkSteamRequest{
-		LinkSteamRequest: nkapi.LinkSteamRequest{
-			Account: &nkapi.AccountSteam{
-				Token: token,
-			},
+		Account: &AccountSteam{
+			Token: token,
 		},
 	}
 }
@@ -1141,17 +964,10 @@ func (req *LinkSteamRequest) Async(ctx context.Context, cl *Client, f func(error
 	}()
 }
 
-// SessionRefreshRequest is a request to refresh the session token.
-type SessionRefreshRequest struct {
-	nkapi.SessionRefreshRequest
-}
-
 // SessionRefresh creates a request to refresh the session token.
 func SessionRefresh(refreshToken string) *SessionRefreshRequest {
 	return &SessionRefreshRequest{
-		SessionRefreshRequest: nkapi.SessionRefreshRequest{
-			Token: refreshToken,
-		},
+		Token: refreshToken,
 	}
 }
 
@@ -1179,13 +995,13 @@ func (req *SessionRefreshRequest) Async(ctx context.Context, cl *Client, f func(
 
 // UnlinkAppleRequest is a request to remove a Apple token from a user's account.
 type UnlinkAppleRequest struct {
-	nkapi.AccountApple
+	AccountApple
 }
 
 // UnlinkApple creates a request to remove a Apple token from a user's account.
 func UnlinkApple(token string) *UnlinkAppleRequest {
 	return &UnlinkAppleRequest{
-		AccountApple: nkapi.AccountApple{
+		AccountApple: AccountApple{
 			Token: token,
 		},
 	}
@@ -1211,13 +1027,13 @@ func (req *UnlinkAppleRequest) Async(ctx context.Context, cl *Client, f func(err
 
 // UnlinkCustomRequest is a request to remove a custom id from the user's account.
 type UnlinkCustomRequest struct {
-	nkapi.AccountCustom
+	AccountCustom
 }
 
 // UnlinkCustom creates a request to remove a custom id from the user's account.
 func UnlinkCustom(id string) *UnlinkCustomRequest {
 	return &UnlinkCustomRequest{
-		AccountCustom: nkapi.AccountCustom{
+		AccountCustom: AccountCustom{
 			Id: id,
 		},
 	}
@@ -1243,13 +1059,13 @@ func (req *UnlinkCustomRequest) Async(ctx context.Context, cl *Client, f func(er
 
 // UnlinkDeviceRequest is a request to remove a device id from a user's account.
 type UnlinkDeviceRequest struct {
-	nkapi.AccountDevice
+	AccountDevice
 }
 
 // UnlinkDevice creates a request to remove a device id from a user's account.
 func UnlinkDevice(id string) *UnlinkDeviceRequest {
 	return &UnlinkDeviceRequest{
-		AccountDevice: nkapi.AccountDevice{
+		AccountDevice: AccountDevice{
 			Id: id,
 		},
 	}
@@ -1275,13 +1091,13 @@ func (req *UnlinkDeviceRequest) Async(ctx context.Context, cl *Client, f func(er
 
 // UnlinkEmailRequest is a request to remove a email/password from a user's account.
 type UnlinkEmailRequest struct {
-	nkapi.AccountEmail
+	AccountEmail
 }
 
 // UnlinkEmail creates a request to remove a email/password from a user's account.
 func UnlinkEmail(email, password string) *UnlinkEmailRequest {
 	return &UnlinkEmailRequest{
-		AccountEmail: nkapi.AccountEmail{
+		AccountEmail: AccountEmail{
 			Email:    email,
 			Password: password,
 		},
@@ -1308,13 +1124,13 @@ func (req *UnlinkEmailRequest) Async(ctx context.Context, cl *Client, f func(err
 
 // UnlinkFacebookRequest is a request to remove a Facebook token from a user's account.
 type UnlinkFacebookRequest struct {
-	nkapi.AccountFacebook
+	AccountFacebook
 }
 
 // UnlinkFacebook creates a request to remove a Facebook token from a user's account.
 func UnlinkFacebook(token string) *UnlinkFacebookRequest {
 	return &UnlinkFacebookRequest{
-		AccountFacebook: nkapi.AccountFacebook{
+		AccountFacebook: AccountFacebook{
 			Token: token,
 		},
 	}
@@ -1341,14 +1157,14 @@ func (req *UnlinkFacebookRequest) Async(ctx context.Context, cl *Client, f func(
 // UnlinkFacebookInstantGameRequest is a request to remove Facebook Instant
 // Game signedPlayerInfo from the user's account.
 type UnlinkFacebookInstantGameRequest struct {
-	nkapi.AccountFacebookInstantGame
+	AccountFacebookInstantGame
 }
 
 // UnlinkFacebookInstantGame creates a request to remove Facebook Instant Game
 // signedPlayerInfo from the user's account.
 func UnlinkFacebookInstantGame(signedPlayerInfo string) *UnlinkFacebookInstantGameRequest {
 	return &UnlinkFacebookInstantGameRequest{
-		AccountFacebookInstantGame: nkapi.AccountFacebookInstantGame{
+		AccountFacebookInstantGame: AccountFacebookInstantGame{
 			SignedPlayerInfo: signedPlayerInfo,
 		},
 	}
@@ -1375,7 +1191,7 @@ func (req *UnlinkFacebookInstantGameRequest) Async(ctx context.Context, cl *Clie
 // UnlinkGameCenterRequest is a request to remove a Apple GameCenter token from
 // a user's account.
 type UnlinkGameCenterRequest struct {
-	nkapi.AccountGameCenter
+	AccountGameCenter
 }
 
 // UnlinkGameCenter creates a request to remove a Apple GameCenter token from a
@@ -1440,13 +1256,13 @@ func (req *UnlinkGameCenterRequest) Async(ctx context.Context, cl *Client, f fun
 
 // UnlinkGoogleRequest is a request to remove a Google token from a user's account.
 type UnlinkGoogleRequest struct {
-	nkapi.AccountGoogle
+	AccountGoogle
 }
 
 // UnlinkGoogle creates a request to remove a Google token from a user's account.
 func UnlinkGoogle(token string) *UnlinkGoogleRequest {
 	return &UnlinkGoogleRequest{
-		AccountGoogle: nkapi.AccountGoogle{
+		AccountGoogle: AccountGoogle{
 			Token: token,
 		},
 	}
@@ -1472,13 +1288,13 @@ func (req *UnlinkGoogleRequest) Async(ctx context.Context, cl *Client, f func(er
 
 // UnlinkSteamRequest is a request to remove a Steam token from a user's account.
 type UnlinkSteamRequest struct {
-	nkapi.AccountSteam
+	AccountSteam
 }
 
 // UnlinkSteam creates a request to remove a Steam token from a user's account.
 func UnlinkSteam(token string) *UnlinkSteamRequest {
 	return &UnlinkSteamRequest{
-		AccountSteam: nkapi.AccountSteam{
+		AccountSteam: AccountSteam{
 			Token: token,
 		},
 	}
@@ -1502,18 +1318,11 @@ func (req *UnlinkSteamRequest) Async(ctx context.Context, cl *Client, f func(err
 	}()
 }
 
-// ChannelMessagesRequest is a request to retrieve a channel's messages.
-type ChannelMessagesRequest struct {
-	nkapi.ListChannelMessagesRequest
-}
-
 // ChannelMessages creates a request to retrieve a channel's messages.
 func ChannelMessages(channelId string) *ChannelMessagesRequest {
 	return &ChannelMessagesRequest{
-		ListChannelMessagesRequest: nkapi.ListChannelMessagesRequest{
-			ChannelId: channelId,
-			Limit:     wrapperspb.Int32(100),
-		},
+		ChannelId: channelId,
+		Limit:     wrapperspb.Int32(100),
 	}
 }
 
@@ -1561,20 +1370,10 @@ func (req *ChannelMessagesRequest) Async(ctx context.Context, cl *Client, f func
 	}()
 }
 
-// ChannelMessagesResponse is the ListChannelMessages response.
-type ChannelMessagesResponse = nkapi.ChannelMessageList
-
-// EventRequest is a request to send an event.
-type EventRequest struct {
-	nkapi.Event
-}
-
 // Event creates a request to send an event.
 func Event(name string) *EventRequest {
 	return &EventRequest{
-		Event: nkapi.Event{
-			Name: name,
-		},
+		Name: name,
 	}
 }
 
@@ -1608,17 +1407,10 @@ func (req *EventRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	}()
 }
 
-// FriendsRequest is a request to retrieve friends.
-type FriendsRequest struct {
-	nkapi.ListFriendsRequest
-}
-
 // Friends creates a request to retrieve friends.
 func Friends() *FriendsRequest {
 	return &FriendsRequest{
-		ListFriendsRequest: nkapi.ListFriendsRequest{
-			Limit: wrapperspb.Int32(100),
-		},
+		Limit: wrapperspb.Int32(100),
 	}
 }
 
@@ -1666,20 +1458,10 @@ func (req *FriendsRequest) Async(ctx context.Context, cl *Client, f func(*Friend
 	}()
 }
 
-// FriendsResponse is the ListFriends response.
-type FriendsResponse = nkapi.FriendList
-
-// DeleteFriendsRequest is a request to delete friends by ID or username.
-type DeleteFriendsRequest struct {
-	nkapi.DeleteFriendsRequest
-}
-
 // DeleteFriends creates a request to delete friends by ID or username.
 func DeleteFriends(ids ...string) *DeleteFriendsRequest {
 	return &DeleteFriendsRequest{
-		DeleteFriendsRequest: nkapi.DeleteFriendsRequest{
-			Ids: ids,
-		},
+		Ids: ids,
 	}
 }
 
@@ -1701,17 +1483,10 @@ func (req *DeleteFriendsRequest) Async(ctx context.Context, cl *Client, f func(e
 	}()
 }
 
-// AddFriendsRequest is a request to add friends by ID or username.
-type AddFriendsRequest struct {
-	nkapi.AddFriendsRequest
-}
-
 // AddFriends creates a new request to add friends by ID or username.
 func AddFriends(ids ...string) *AddFriendsRequest {
 	return &AddFriendsRequest{
-		AddFriendsRequest: nkapi.AddFriendsRequest{
-			Ids: ids,
-		},
+		Ids: ids,
 	}
 }
 
@@ -1733,17 +1508,10 @@ func (req *AddFriendsRequest) Async(ctx context.Context, cl *Client, f func(erro
 	}()
 }
 
-// BlockFriendsRequest is a request blocks friends by ID or username.
-type BlockFriendsRequest struct {
-	nkapi.BlockFriendsRequest
-}
-
 // BlockFriends creates a request to block friends by ID or username.
 func BlockFriends(ids ...string) *BlockFriendsRequest {
 	return &BlockFriendsRequest{
-		BlockFriendsRequest: nkapi.BlockFriendsRequest{
-			Ids: ids,
-		},
+		Ids: ids,
 	}
 }
 
@@ -1765,18 +1533,11 @@ func (req *BlockFriendsRequest) Async(ctx context.Context, cl *Client, f func(er
 	}()
 }
 
-// ImportFacebookFriendsRequest is a request to import Facebook friends.
-type ImportFacebookFriendsRequest struct {
-	nkapi.ImportFacebookFriendsRequest
-}
-
 // ImportFacebookFriends creates a request to import Facebook friends.
 func ImportFacebookFriends(token string) *ImportFacebookFriendsRequest {
 	return &ImportFacebookFriendsRequest{
-		ImportFacebookFriendsRequest: nkapi.ImportFacebookFriendsRequest{
-			Account: &nkapi.AccountFacebook{
-				Token: token,
-			},
+		Account: &AccountFacebook{
+			Token: token,
 		},
 	}
 }
@@ -1809,18 +1570,11 @@ func (req *ImportFacebookFriendsRequest) Async(ctx context.Context, cl *Client, 
 	}()
 }
 
-// ImportSteamFriendsRequest is a request to import Steam friends.
-type ImportSteamFriendsRequest struct {
-	nkapi.ImportSteamFriendsRequest
-}
-
 // ImportSteamFriends creates a request to import Steam friends.
 func ImportSteamFriends(token string) *ImportSteamFriendsRequest {
 	return &ImportSteamFriendsRequest{
-		ImportSteamFriendsRequest: nkapi.ImportSteamFriendsRequest{
-			Account: &nkapi.AccountSteam{
-				Token: token,
-			},
+		Account: &AccountSteam{
+			Token: token,
 		},
 	}
 }
@@ -1851,11 +1605,6 @@ func (req *ImportSteamFriendsRequest) Async(ctx context.Context, cl *Client, f f
 	go func() {
 		f(req.Do(ctx, cl))
 	}()
-}
-
-// GroupsRequest is a request to retrieve groups.
-type GroupsRequest struct {
-	nkapi.ListGroupsRequest
 }
 
 // Groups creates a request to retrieve groups.
@@ -1934,14 +1683,6 @@ func (req *GroupsRequest) Async(ctx context.Context, cl *Client, f func(*GroupsR
 	}()
 }
 
-// GroupsResponse is the ListGroups response.
-type GroupsResponse = nkapi.GroupList
-
-// CreateGroupRequest is a request to create a new group.
-type CreateGroupRequest struct {
-	nkapi.CreateGroupRequest
-}
-
 // CreateGroup creates a request to create a new group.
 func CreateGroup() *CreateGroupRequest {
 	return &CreateGroupRequest{}
@@ -1984,7 +1725,7 @@ func (req *CreateGroupRequest) WithMaxCount(maxCount int) *CreateGroupRequest {
 }
 
 // Do executes the request against the context and client.
-func (req *CreateGroupRequest) Do(ctx context.Context, cl *Client) (*nkapi.Group, error) {
+func (req *CreateGroupRequest) Do(ctx context.Context, cl *Client) (*Group, error) {
 	res := new(CreateGroupResponse)
 	if err := cl.Do(ctx, "POST", "v2/group", true, nil, req, res); err != nil {
 		return nil, err
@@ -2000,19 +1741,12 @@ func (req *CreateGroupRequest) Async(ctx context.Context, cl *Client, f func(*Cr
 }
 
 // CreateGroupResponse is the create group response.
-type CreateGroupResponse = nkapi.Group
-
-// DeleteGroupRequest is a request to delete a group.
-type DeleteGroupRequest struct {
-	nkapi.DeleteGroupRequest
-}
+type CreateGroupResponse = Group
 
 // DeleteGroup creates a request to delete a group.
 func DeleteGroup(groupId string) *DeleteGroupRequest {
 	return &DeleteGroupRequest{
-		DeleteGroupRequest: nkapi.DeleteGroupRequest{
-			GroupId: groupId,
-		},
+		GroupId: groupId,
 	}
 }
 
@@ -2028,17 +1762,10 @@ func (req *DeleteGroupRequest) Async(ctx context.Context, cl *Client, f func(err
 	}()
 }
 
-// UpdateGroupRequest is a request to update a group.
-type UpdateGroupRequest struct {
-	nkapi.UpdateGroupRequest
-}
-
 // UpdateGroup creates a request to update a group.
 func UpdateGroup(groupId string) *UpdateGroupRequest {
 	return &UpdateGroupRequest{
-		UpdateGroupRequest: nkapi.UpdateGroupRequest{
-			GroupId: groupId,
-		},
+		GroupId: groupId,
 	}
 }
 
@@ -2084,20 +1811,12 @@ func (req *UpdateGroupRequest) Async(ctx context.Context, cl *Client, f func(err
 	}()
 }
 
-// AddGroupUsersRequest is a request to add users to a group or accepts their
-// join request.
-type AddGroupUsersRequest struct {
-	nkapi.AddGroupUsersRequest
-}
-
 // AddGroupUsers creates a new request to add users to a group or accepts their
 // join request.
 func AddGroupUsers(groupId string, userIds ...string) *AddGroupUsersRequest {
 	return &AddGroupUsersRequest{
-		AddGroupUsersRequest: nkapi.AddGroupUsersRequest{
-			GroupId: groupId,
-			UserIds: userIds,
-		},
+		GroupId: groupId,
+		UserIds: userIds,
 	}
 }
 
@@ -2113,18 +1832,11 @@ func (req *AddGroupUsersRequest) Async(ctx context.Context, cl *Client, f func(e
 	}()
 }
 
-// BanGroupUsersRequest is a request to ban users from a group.
-type BanGroupUsersRequest struct {
-	nkapi.BanGroupUsersRequest
-}
-
 // BanGroupUsers creates a request to ban users from a group.
 func BanGroupUsers(groupId string, userIds ...string) *BanGroupUsersRequest {
 	return &BanGroupUsersRequest{
-		BanGroupUsersRequest: nkapi.BanGroupUsersRequest{
-			GroupId: groupId,
-			UserIds: userIds,
-		},
+		GroupId: groupId,
+		UserIds: userIds,
 	}
 }
 
@@ -2140,18 +1852,11 @@ func (req *BanGroupUsersRequest) Async(ctx context.Context, cl *Client, f func(e
 	}()
 }
 
-// DemoteGroupUsersRequest is a request to demote group users.
-type DemoteGroupUsersRequest struct {
-	nkapi.DemoteGroupUsersRequest
-}
-
 // DemoteGroupUsers creates a request to demote group users.
 func DemoteGroupUsers(groupId string, userIds ...string) *DemoteGroupUsersRequest {
 	return &DemoteGroupUsersRequest{
-		DemoteGroupUsersRequest: nkapi.DemoteGroupUsersRequest{
-			GroupId: groupId,
-			UserIds: userIds,
-		},
+		GroupId: groupId,
+		UserIds: userIds,
 	}
 }
 
@@ -2167,17 +1872,10 @@ func (req *DemoteGroupUsersRequest) Async(ctx context.Context, cl *Client, f fun
 	}()
 }
 
-// JoinGroupRequest is a request to join a group.
-type JoinGroupRequest struct {
-	nkapi.JoinGroupRequest
-}
-
 // JoinGroup creates a request to join a group.
 func JoinGroup(groupId string) *JoinGroupRequest {
 	return &JoinGroupRequest{
-		JoinGroupRequest: nkapi.JoinGroupRequest{
-			GroupId: groupId,
-		},
+		GroupId: groupId,
 	}
 }
 
@@ -2193,20 +1891,12 @@ func (req *JoinGroupRequest) Async(ctx context.Context, cl *Client, f func(error
 	}()
 }
 
-// KickGroupUsersRequest is a request to kick users from a group or decline
-// their join request.
-type KickGroupUsersRequest struct {
-	nkapi.KickGroupUsersRequest
-}
-
 // KickGroupUsers creates a request to kick users from a group or decline their
 // join request.
 func KickGroupUsers(groupId string, userIds ...string) *KickGroupUsersRequest {
 	return &KickGroupUsersRequest{
-		KickGroupUsersRequest: nkapi.KickGroupUsersRequest{
-			GroupId: groupId,
-			UserIds: userIds,
-		},
+		GroupId: groupId,
+		UserIds: userIds,
 	}
 }
 
@@ -2222,17 +1912,10 @@ func (req *KickGroupUsersRequest) Async(ctx context.Context, cl *Client, f func(
 	}()
 }
 
-// LeaveGroupRequest is a request to leave a group.
-type LeaveGroupRequest struct {
-	nkapi.LeaveGroupRequest
-}
-
 // LeaveGroup creates a request to leave a group.
 func LeaveGroup(groupId string) *LeaveGroupRequest {
 	return &LeaveGroupRequest{
-		LeaveGroupRequest: nkapi.LeaveGroupRequest{
-			GroupId: groupId,
-		},
+		GroupId: groupId,
 	}
 }
 
@@ -2248,20 +1931,12 @@ func (req *LeaveGroupRequest) Async(ctx context.Context, cl *Client, f func(erro
 	}()
 }
 
-// PromoteGroupUsersRequest is a request to promote users in a group to the
-// next role up.
-type PromoteGroupUsersRequest struct {
-	nkapi.PromoteGroupUsersRequest
-}
-
 // PromoteGroupUsers creates a request to promote users in a group to the next
 // role up.
 func PromoteGroupUsers(groupId string, userIds ...string) *PromoteGroupUsersRequest {
 	return &PromoteGroupUsersRequest{
-		PromoteGroupUsersRequest: nkapi.PromoteGroupUsersRequest{
-			GroupId: groupId,
-			UserIds: userIds,
-		},
+		GroupId: groupId,
+		UserIds: userIds,
 	}
 }
 
@@ -2277,18 +1952,11 @@ func (req *PromoteGroupUsersRequest) Async(ctx context.Context, cl *Client, f fu
 	}()
 }
 
-// GroupUsersRequest is a request to retrieve a group's users.
-type GroupUsersRequest struct {
-	nkapi.ListGroupUsersRequest
-}
-
 // GroupUsers creates a request to retrieve a group's users.
 func GroupUsers(groupId string) *GroupUsersRequest {
 	return &GroupUsersRequest{
-		ListGroupUsersRequest: nkapi.ListGroupUsersRequest{
-			GroupId: groupId,
-			Limit:   wrapperspb.Int32(100),
-		},
+		GroupId: groupId,
+		Limit:   wrapperspb.Int32(100),
 	}
 }
 
@@ -2299,7 +1967,7 @@ func (req *GroupUsersRequest) WithLimit(limit int) *GroupUsersRequest {
 }
 
 // WithState sets the state on the request.
-func (req *GroupUsersRequest) WithState(state GroupUserState) *GroupUsersRequest {
+func (req *GroupUsersRequest) WithState(state UserRoleState) *GroupUsersRequest {
 	req.State = wrapperspb.Int32(int32(state))
 	return req
 }
@@ -2336,23 +2004,10 @@ func (req *GroupUsersRequest) Async(ctx context.Context, cl *Client, f func(*Gro
 	}()
 }
 
-// GroupUsersResponse is the ListGroupUsers response.
-type GroupUsersResponse = nkapi.GroupUserList
-
-// ValidatePurchaseResponse is the validate purchase response.
-type ValidatePurchaseResponse = nkapi.ValidatePurchaseResponse
-
-// ValidatePurchaseAppleRequest is a request to validate a Apple purchase.
-type ValidatePurchaseAppleRequest struct {
-	nkapi.ValidatePurchaseAppleRequest
-}
-
 // ValidatePurchaseApple creates a request to validate a Apple purchase.
 func ValidatePurchaseApple(receipt string) *ValidatePurchaseAppleRequest {
 	return &ValidatePurchaseAppleRequest{
-		ValidatePurchaseAppleRequest: nkapi.ValidatePurchaseAppleRequest{
-			Receipt: receipt,
-		},
+		Receipt: receipt,
 	}
 }
 
@@ -2378,17 +2033,10 @@ func (req *ValidatePurchaseAppleRequest) Async(ctx context.Context, cl *Client, 
 	}()
 }
 
-// ValidatePurchaseGoogleRequest is a request to validate a Google purchase.
-type ValidatePurchaseGoogleRequest struct {
-	nkapi.ValidatePurchaseGoogleRequest
-}
-
 // ValidatePurchaseGoogle creates a request to validate a Google purchase.
 func ValidatePurchaseGoogle(purchase string) *ValidatePurchaseGoogleRequest {
 	return &ValidatePurchaseGoogleRequest{
-		ValidatePurchaseGoogleRequest: nkapi.ValidatePurchaseGoogleRequest{
-			Purchase: purchase,
-		},
+		Purchase: purchase,
 	}
 }
 
@@ -2414,18 +2062,11 @@ func (req *ValidatePurchaseGoogleRequest) Async(ctx context.Context, cl *Client,
 	}()
 }
 
-// ValidatePurchaseHuaweiRequest is a request to validate a Huawei purchase.
-type ValidatePurchaseHuaweiRequest struct {
-	nkapi.ValidatePurchaseHuaweiRequest
-}
-
 // ValidatePurchaseHuawei creates a request to validate a Huawei purchase.
 func ValidatePurchaseHuawei(purchase, signature string) *ValidatePurchaseHuaweiRequest {
 	return &ValidatePurchaseHuaweiRequest{
-		ValidatePurchaseHuaweiRequest: nkapi.ValidatePurchaseHuaweiRequest{
-			Purchase:  purchase,
-			Signature: signature,
-		},
+		Purchase:  purchase,
+		Signature: signature,
 	}
 }
 
@@ -2451,17 +2092,10 @@ func (req *ValidatePurchaseHuaweiRequest) Async(ctx context.Context, cl *Client,
 	}()
 }
 
-// SubscriptionsRequest is a request to retrieve subscriptions.
-type SubscriptionsRequest struct {
-	nkapi.ListSubscriptionsRequest
-}
-
 // Subscriptions creates a request to retrieve subscriptions.
 func Subscriptions(groupId string) *SubscriptionsRequest {
 	return &SubscriptionsRequest{
-		ListSubscriptionsRequest: nkapi.ListSubscriptionsRequest{
-			Limit: wrapperspb.Int32(100),
-		},
+		Limit: wrapperspb.Int32(100),
 	}
 }
 
@@ -2500,23 +2134,10 @@ func (req *SubscriptionsRequest) Async(ctx context.Context, cl *Client, f func(*
 	}()
 }
 
-// SubscriptionsResponse is the Subscriptions response.
-type SubscriptionsResponse = nkapi.SubscriptionList
-
-// ValidateSubscriptionResponse is the validate subscription response.
-type ValidateSubscriptionResponse = nkapi.ValidateSubscriptionResponse
-
-// ValidateSubscriptionAppleRequest is a request to validate Apple subscriptions.
-type ValidateSubscriptionAppleRequest struct {
-	nkapi.ValidateSubscriptionAppleRequest
-}
-
 // ValidateSubscriptionApple creates a request to validate Apple subscriptions.
 func ValidateSubscriptionApple(receipt string) *ValidateSubscriptionAppleRequest {
 	return &ValidateSubscriptionAppleRequest{
-		ValidateSubscriptionAppleRequest: nkapi.ValidateSubscriptionAppleRequest{
-			Receipt: receipt,
-		},
+		Receipt: receipt,
 	}
 }
 
@@ -2542,17 +2163,10 @@ func (req *ValidateSubscriptionAppleRequest) Async(ctx context.Context, cl *Clie
 	}()
 }
 
-// ValidateSubscriptionGoogleRequest is a request to validate a Google subscription.
-type ValidateSubscriptionGoogleRequest struct {
-	nkapi.ValidateSubscriptionGoogleRequest
-}
-
 // ValidateSubscriptionGoogle creates a request to validate a Google subscription.
 func ValidateSubscriptionGoogle(receipt string) *ValidateSubscriptionGoogleRequest {
 	return &ValidateSubscriptionGoogleRequest{
-		ValidateSubscriptionGoogleRequest: nkapi.ValidateSubscriptionGoogleRequest{
-			Receipt: receipt,
-		},
+		Receipt: receipt,
 	}
 }
 
@@ -2578,16 +2192,9 @@ func (req *ValidateSubscriptionGoogleRequest) Async(ctx context.Context, cl *Cli
 	}()
 }
 
-// SubscriptionRequest is a request to retrieve a subscription.
-type SubscriptionRequest struct {
-	nkapi.GetSubscriptionRequest
-}
-
 func Subscription(productId string) *SubscriptionRequest {
 	return &SubscriptionRequest{
-		GetSubscriptionRequest: nkapi.GetSubscriptionRequest{
-			ProductId: productId,
-		},
+		ProductId: productId,
 	}
 }
 
@@ -2608,20 +2215,13 @@ func (req *SubscriptionRequest) Async(ctx context.Context, cl *Client, f func(*S
 }
 
 // SubscriptionResponse is a Subscription response.
-type SubscriptionResponse = nkapi.ValidatedSubscription
-
-// LeaderboardRecordsRequest is a request to retrieve the leaderboard records.
-type LeaderboardRecordsRequest struct {
-	nkapi.ListLeaderboardRecordsRequest
-}
+type SubscriptionResponse = ValidatedSubscription
 
 // LeaderboardRecords creates a request to retrieve the leaderboard records.
 func LeaderboardRecords(leaderboardId string) *LeaderboardRecordsRequest {
 	return &LeaderboardRecordsRequest{
-		ListLeaderboardRecordsRequest: nkapi.ListLeaderboardRecordsRequest{
-			LeaderboardId: leaderboardId,
-			Limit:         wrapperspb.Int32(100),
-		},
+		LeaderboardId: leaderboardId,
+		Limit:         wrapperspb.Int32(100),
 	}
 }
 
@@ -2678,20 +2278,10 @@ func (req *LeaderboardRecordsRequest) Async(ctx context.Context, cl *Client, f f
 	}()
 }
 
-// LeaderboardRecordsResponse is the ListLeaderboardRecords response.
-type LeaderboardRecordsResponse = nkapi.LeaderboardRecordList
-
-// DeleteLeaderboardRecordRequest is a request to delete a leaderboard.
-type DeleteLeaderboardRecordRequest struct {
-	nkapi.DeleteLeaderboardRecordRequest
-}
-
 // DeleteLeaderboardRecord creates a request to delete a leaderboard.
 func DeleteLeaderboardRecord(leaderboardId string) *DeleteLeaderboardRecordRequest {
 	return &DeleteLeaderboardRecordRequest{
-		DeleteLeaderboardRecordRequest: nkapi.DeleteLeaderboardRecordRequest{
-			LeaderboardId: leaderboardId,
-		},
+		LeaderboardId: leaderboardId,
 	}
 }
 
@@ -2707,18 +2297,11 @@ func (req *DeleteLeaderboardRecordRequest) Async(ctx context.Context, cl *Client
 	}()
 }
 
-// WriteLeaderboardRecordRequest is a request to write a leaderboard record.
-type WriteLeaderboardRecordRequest struct {
-	nkapi.WriteLeaderboardRecordRequest
-}
-
 // WriteLeaderboardRecord creates a request to write a leaderboard record.
 func WriteLeaderboardRecord(leaderboardId string) *WriteLeaderboardRecordRequest {
 	return &WriteLeaderboardRecordRequest{
-		WriteLeaderboardRecordRequest: nkapi.WriteLeaderboardRecordRequest{
-			LeaderboardId: leaderboardId,
-			Record:        &nkapi.WriteLeaderboardRecordRequest_LeaderboardRecordWrite{},
-		},
+		LeaderboardId: leaderboardId,
+		Record:        &LeaderboardRecordWrite{},
 	}
 }
 
@@ -2763,23 +2346,15 @@ func (req *WriteLeaderboardRecordRequest) Async(ctx context.Context, cl *Client,
 }
 
 // WriteLeaderboardRecordResponse is the WriteLeaderboardRecord response.
-type WriteLeaderboardRecordResponse = nkapi.LeaderboardRecord
-
-// LeaderboardRecordsAroundOwnerRequest is a request to retrieve leaderboard
-// records around owner.
-type LeaderboardRecordsAroundOwnerRequest struct {
-	nkapi.ListLeaderboardRecordsAroundOwnerRequest
-}
+type WriteLeaderboardRecordResponse = LeaderboardRecord
 
 // LeaderboardRecordsAroundOwner creates a request to retrieve leaderboard
 // records around owner.
 func LeaderboardRecordsAroundOwner(leaderboardId, ownerId string) *LeaderboardRecordsAroundOwnerRequest {
 	return &LeaderboardRecordsAroundOwnerRequest{
-		ListLeaderboardRecordsAroundOwnerRequest: nkapi.ListLeaderboardRecordsAroundOwnerRequest{
-			LeaderboardId: leaderboardId,
-			OwnerId:       ownerId,
-			Limit:         wrapperspb.UInt32(100),
-		},
+		LeaderboardId: leaderboardId,
+		OwnerId:       ownerId,
+		Limit:         wrapperspb.UInt32(100),
 	}
 }
 
@@ -2796,7 +2371,7 @@ func (req *LeaderboardRecordsAroundOwnerRequest) WithExpiry(expiry int) *Leaderb
 }
 
 // Do executes the request against the context and client.
-func (req *LeaderboardRecordsAroundOwnerRequest) Do(ctx context.Context, cl *Client) (*LeaderboardRecordsAroundOwnerResponse, error) {
+func (req *LeaderboardRecordsAroundOwnerRequest) Do(ctx context.Context, cl *Client) (*LeaderboardRecordsResponse, error) {
 	query := url.Values{}
 	if req.Limit != nil {
 		query.Set("limit", strconv.FormatInt(int64(req.Limit.Value), 10))
@@ -2804,12 +2379,7 @@ func (req *LeaderboardRecordsAroundOwnerRequest) Do(ctx context.Context, cl *Cli
 	if req.Expiry != nil {
 		query.Set("expiry", strconv.FormatInt(int64(req.Expiry.Value), 10))
 	}
-	/*
-		if req.Cursor != "" {
-			query.Set("cursor", req.Cursor)
-		}
-	*/
-	res := new(LeaderboardRecordsAroundOwnerResponse)
+	res := new(LeaderboardRecordsResponse)
 	if err := cl.Do(ctx, "GET", "v2/leaderboard/"+req.LeaderboardId+"/owner/"+req.OwnerId, true, query, nil, res); err != nil {
 		return nil, err
 	}
@@ -2817,26 +2387,16 @@ func (req *LeaderboardRecordsAroundOwnerRequest) Do(ctx context.Context, cl *Cli
 }
 
 // Async executes the request against the context and client.
-func (req *LeaderboardRecordsAroundOwnerRequest) Async(ctx context.Context, cl *Client, f func(*LeaderboardRecordsAroundOwnerResponse, error)) {
+func (req *LeaderboardRecordsAroundOwnerRequest) Async(ctx context.Context, cl *Client, f func(*LeaderboardRecordsResponse, error)) {
 	go func() {
 		f(req.Do(ctx, cl))
 	}()
 }
 
-// LeaderboardRecordsAroundOwnerResponse is the ListLeaderboardRecordsAroundOwner response.
-type LeaderboardRecordsAroundOwnerResponse = nkapi.LeaderboardRecordList
-
-// MatchesRequest is a request to retrieve matches.
-type MatchesRequest struct {
-	nkapi.ListMatchesRequest
-}
-
 // Matches creates a request to retrieve matches.
 func Matches() *MatchesRequest {
 	return &MatchesRequest{
-		ListMatchesRequest: nkapi.ListMatchesRequest{
-			Limit: wrapperspb.Int32(100),
-		},
+		Limit: wrapperspb.Int32(100),
 	}
 }
 
@@ -2911,20 +2471,10 @@ func (req *MatchesRequest) Async(ctx context.Context, cl *Client, f func(*Matche
 	}()
 }
 
-// MatchesResponse is the ListMatches response.
-type MatchesResponse = nkapi.MatchList
-
-// NotificationsRequest is a request to retrieve notifications.
-type NotificationsRequest struct {
-	nkapi.ListNotificationsRequest
-}
-
 // Notifications creates a request to retrieve notifications.
 func Notifications() *NotificationsRequest {
 	return &NotificationsRequest{
-		ListNotificationsRequest: nkapi.ListNotificationsRequest{
-			Limit: wrapperspb.Int32(100),
-		},
+		Limit: wrapperspb.Int32(100),
 	}
 }
 
@@ -2963,20 +2513,10 @@ func (req *NotificationsRequest) Async(ctx context.Context, cl *Client, f func(*
 	}()
 }
 
-// NotificationsResponse is the ListNotifications response.
-type NotificationsResponse = nkapi.NotificationList
-
-// DeleteNotificationsRequest is a request to delete notifications.
-type DeleteNotificationsRequest struct {
-	nkapi.DeleteNotificationsRequest
-}
-
 // DeleteNotifications creates a request to delete notifications.
 func DeleteNotifications(ids ...string) *DeleteNotificationsRequest {
 	return &DeleteNotificationsRequest{
-		DeleteNotificationsRequest: nkapi.DeleteNotificationsRequest{
-			Ids: ids,
-		},
+		Ids: ids,
 	}
 }
 
@@ -3013,10 +2553,10 @@ func Rpc(id string, payload, v interface{}) *RpcRequest {
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (req *RpcRequest) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_Rpc{
-			Rpc: &nkapi.Rpc{
+func (req *RpcRequest) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_Rpc{
+			Rpc: &RpcMsg{
 				Id:      req.id,
 				Payload: string(req.buf),
 			},
@@ -3058,7 +2598,7 @@ func (req *RpcRequest) Send(ctx context.Context, conn *Conn) error {
 	if err := req.marshal(); err != nil {
 		return err
 	}
-	res := new(rpcMsg)
+	res := new(RpcMsg)
 	if err := conn.Send(ctx, req, res); err != nil {
 		return err
 	}
@@ -3103,7 +2643,7 @@ func (req *RpcRequest) marshal() error {
 }
 
 // unmarshal unmarshals the response.
-func (req *RpcRequest) unmarshal(msg *rpcMsg) error {
+func (req *RpcRequest) unmarshal(msg *RpcMsg) error {
 	if msg.Payload == "" {
 		return nil
 	}
@@ -3121,18 +2661,11 @@ func (req *RpcRequest) unmarshal(msg *rpcMsg) error {
 	return dec.Decode(req.v)
 }
 
-// SessionLogoutRequest is a request to logout of the session.
-type SessionLogoutRequest struct {
-	nkapi.SessionLogoutRequest
-}
-
 // SessionLogout creates a request to logout of the session.
 func SessionLogout(token, refreshToken string) *SessionLogoutRequest {
 	return &SessionLogoutRequest{
-		SessionLogoutRequest: nkapi.SessionLogoutRequest{
-			Token:        token,
-			RefreshToken: refreshToken,
-		},
+		Token:        token,
+		RefreshToken: refreshToken,
 	}
 }
 
@@ -3148,14 +2681,6 @@ func (req *SessionLogoutRequest) Async(ctx context.Context, cl *Client, f func(e
 	}()
 }
 
-// WriteStorageObject is the write storage object.
-type WriteStorageObject = nkapi.WriteStorageObject
-
-// ReadStorageObjectsRequest is a request to read storage objects.
-type ReadStorageObjectsRequest struct {
-	nkapi.ReadStorageObjectsRequest
-}
-
 // ReadStorageObjects creates a request to read storage objects.
 func ReadStorageObjects() *ReadStorageObjectsRequest {
 	return &ReadStorageObjectsRequest{}
@@ -3163,7 +2688,7 @@ func ReadStorageObjects() *ReadStorageObjectsRequest {
 
 // WithObjectId sets the objectId on the request.
 func (req *ReadStorageObjectsRequest) WithObjectId(collection, key, userId string) *ReadStorageObjectsRequest {
-	req.ObjectIds = append(req.ObjectIds, &nkapi.ReadStorageObjectId{
+	req.ObjectIds = append(req.ObjectIds, &ReadStorageObjectId{
 		Collection: collection,
 		Key:        key,
 		UserId:     userId,
@@ -3185,14 +2710,6 @@ func (req *ReadStorageObjectsRequest) Async(ctx context.Context, cl *Client, f f
 	go func() {
 		f(req.Do(ctx, cl))
 	}()
-}
-
-// ReadStorageObjectsResponse is the ReadStorageObjects response.
-type ReadStorageObjectsResponse = nkapi.StorageObjects
-
-// WriteStorageObjectsRequest is a request to write storage objects.
-type WriteStorageObjectsRequest struct {
-	nkapi.WriteStorageObjectsRequest
 }
 
 // WriteStorageObjects creates a request to write storage objects.
@@ -3222,14 +2739,6 @@ func (req *WriteStorageObjectsRequest) Async(ctx context.Context, cl *Client, f 
 	}()
 }
 
-// WriteStorageObjectsResponse is the WriteStorageObjects response.
-type WriteStorageObjectsResponse = nkapi.StorageObjectAcks
-
-// DeleteStorageObjectsRequest is a request to delete storage objects.
-type DeleteStorageObjectsRequest struct {
-	nkapi.DeleteStorageObjectsRequest
-}
-
 // DeleteStorageObjects creates a request to delete storage objects.
 func DeleteStorageObjects() *DeleteStorageObjectsRequest {
 	return &DeleteStorageObjectsRequest{}
@@ -3237,7 +2746,7 @@ func DeleteStorageObjects() *DeleteStorageObjectsRequest {
 
 // WithObjectId sets the objectId on the request.
 func (req *DeleteStorageObjectsRequest) WithObjectId(collection, key, version string) *DeleteStorageObjectsRequest {
-	req.ObjectIds = append(req.ObjectIds, &nkapi.DeleteStorageObjectId{
+	req.ObjectIds = append(req.ObjectIds, &DeleteStorageObjectId{
 		Collection: collection,
 		Key:        key,
 		Version:    version,
@@ -3257,18 +2766,11 @@ func (req *DeleteStorageObjectsRequest) Async(ctx context.Context, cl *Client, f
 	}()
 }
 
-// StorageObjectsRequest is a request to retrieve storage objects.
-type StorageObjectsRequest struct {
-	nkapi.ListStorageObjectsRequest
-}
-
 // StorageObjects creates a request to retrieve storage objects.
 func StorageObjects(collection string) *StorageObjectsRequest {
 	return &StorageObjectsRequest{
-		ListStorageObjectsRequest: nkapi.ListStorageObjectsRequest{
-			Collection: collection,
-			Limit:      wrapperspb.Int32(100),
-		},
+		Collection: collection,
+		Limit:      wrapperspb.Int32(100),
 	}
 }
 
@@ -3316,20 +2818,10 @@ func (req *StorageObjectsRequest) Async(ctx context.Context, cl *Client, f func(
 	}()
 }
 
-// StorageObjectsResponse is the ListStorageObjects response.
-type StorageObjectsResponse = nkapi.StorageObjectList
-
-// TournamentsRequest is a request to retrieve tournaments.
-type TournamentsRequest struct {
-	nkapi.ListTournamentsRequest
-}
-
 // Tournaments creates a request to retrieve tournaments.
 func Tournaments() *TournamentsRequest {
 	return &TournamentsRequest{
-		ListTournamentsRequest: nkapi.ListTournamentsRequest{
-			Limit: wrapperspb.Int32(100),
-		},
+		Limit: wrapperspb.Int32(100),
 	}
 }
 
@@ -3404,21 +2896,11 @@ func (req *TournamentsRequest) Async(ctx context.Context, cl *Client, f func(*To
 	}()
 }
 
-// TournamentsResponse is the ListTournaments response.
-type TournamentsResponse = nkapi.TournamentList
-
-// TournamentRecordsRequest is a request to retrieve tournament records.
-type TournamentRecordsRequest struct {
-	nkapi.ListTournamentRecordsRequest
-}
-
 // TournamentRecords creates a request to retrieve tournament records.
 func TournamentRecords(tournamentId string) *TournamentRecordsRequest {
 	return &TournamentRecordsRequest{
-		ListTournamentRecordsRequest: nkapi.ListTournamentRecordsRequest{
-			TournamentId: tournamentId,
-			Limit:        wrapperspb.Int32(100),
-		},
+		TournamentId: tournamentId,
+		Limit:        wrapperspb.Int32(100),
 	}
 }
 
@@ -3475,21 +2957,11 @@ func (req *TournamentRecordsRequest) Async(ctx context.Context, cl *Client, f fu
 	}()
 }
 
-// TournamentRecordsResponse is the ListTournamentRecords response.
-type TournamentRecordsResponse = nkapi.TournamentRecordList
-
-// WriteTournamentRecordRequest is a request to write a tournament record.
-type WriteTournamentRecordRequest struct {
-	nkapi.WriteTournamentRecordRequest
-}
-
 // WriteTournamentRecord creates a request to write a tournament record.
 func WriteTournamentRecord(tournamentId string) *WriteTournamentRecordRequest {
 	return &WriteTournamentRecordRequest{
-		WriteTournamentRecordRequest: nkapi.WriteTournamentRecordRequest{
-			TournamentId: tournamentId,
-			Record:       &nkapi.WriteTournamentRecordRequest_TournamentRecordWrite{},
-		},
+		TournamentId: tournamentId,
+		Record:       &TournamentRecordWrite{},
 	}
 }
 
@@ -3534,19 +3006,12 @@ func (req *WriteTournamentRecordRequest) Async(ctx context.Context, cl *Client, 
 }
 
 // WriteTournamentRecordResponse is the WriteTournamentRecord response.
-type WriteTournamentRecordResponse = nkapi.LeaderboardRecord
-
-// JoinTournamentRequest is a request to join a tournament.
-type JoinTournamentRequest struct {
-	nkapi.JoinTournamentRequest
-}
+type WriteTournamentRecordResponse = LeaderboardRecord
 
 // JoinTournament creates a request to join a tournament.
 func JoinTournament(tournamentId string) *JoinTournamentRequest {
 	return &JoinTournamentRequest{
-		JoinTournamentRequest: nkapi.JoinTournamentRequest{
-			TournamentId: tournamentId,
-		},
+		TournamentId: tournamentId,
 	}
 }
 
@@ -3562,21 +3027,13 @@ func (req *JoinTournamentRequest) Async(ctx context.Context, cl *Client, f func(
 	}()
 }
 
-// TournamentRecordsAroundOwnerRequest is a request to retrieve tournament
-// records around owner.
-type TournamentRecordsAroundOwnerRequest struct {
-	nkapi.ListTournamentRecordsAroundOwnerRequest
-}
-
 // TournamentRecordsAroundOwner creates a request to retrieve tournament
 // records around owner.
 func TournamentRecordsAroundOwner(tournamentId, ownerId string) *TournamentRecordsAroundOwnerRequest {
 	return &TournamentRecordsAroundOwnerRequest{
-		ListTournamentRecordsAroundOwnerRequest: nkapi.ListTournamentRecordsAroundOwnerRequest{
-			TournamentId: tournamentId,
-			OwnerId:      ownerId,
-			Limit:        wrapperspb.UInt32(100),
-		},
+		TournamentId: tournamentId,
+		OwnerId:      ownerId,
+		Limit:        wrapperspb.UInt32(100),
 	}
 }
 
@@ -3593,7 +3050,7 @@ func (req *TournamentRecordsAroundOwnerRequest) WithExpiry(expiry int) *Tourname
 }
 
 // Do executes the request against the context and client.
-func (req *TournamentRecordsAroundOwnerRequest) Do(ctx context.Context, cl *Client) (*TournamentRecordsAroundOwnerResponse, error) {
+func (req *TournamentRecordsAroundOwnerRequest) Do(ctx context.Context, cl *Client) (*TournamentRecordsResponse, error) {
 	query := url.Values{}
 	if req.Limit != nil {
 		query.Set("limit", strconv.FormatInt(int64(req.Limit.Value), 10))
@@ -3601,12 +3058,7 @@ func (req *TournamentRecordsAroundOwnerRequest) Do(ctx context.Context, cl *Clie
 	if req.Expiry != nil {
 		query.Set("expiry", strconv.FormatInt(int64(req.Expiry.Value), 10))
 	}
-	/*
-		if req.Cursor != "" {
-			query.Set("cursor", req.Cursor)
-		}
-	*/
-	res := new(TournamentRecordsAroundOwnerResponse)
+	res := new(TournamentRecordsResponse)
 	if err := cl.Do(ctx, "GET", "v2/tournament/"+req.TournamentId+"/owner/"+req.OwnerId, true, query, nil, res); err != nil {
 		return nil, err
 	}
@@ -3614,26 +3066,16 @@ func (req *TournamentRecordsAroundOwnerRequest) Do(ctx context.Context, cl *Clie
 }
 
 // Async executes the request against the context and client.
-func (req *TournamentRecordsAroundOwnerRequest) Async(ctx context.Context, cl *Client, f func(*TournamentRecordsAroundOwnerResponse, error)) {
+func (req *TournamentRecordsAroundOwnerRequest) Async(ctx context.Context, cl *Client, f func(*TournamentRecordsResponse, error)) {
 	go func() {
 		f(req.Do(ctx, cl))
 	}()
 }
 
-// TournamentRecordsAroundOwnerResponse is the ListTournamentRecordsAroundOwner response.
-type TournamentRecordsAroundOwnerResponse = nkapi.TournamentRecordList
-
-// UsersRequest is a request to retrieve users.
-type UsersRequest struct {
-	nkapi.GetUsersRequest
-}
-
 // Users creates a request to retrieve users.
 func Users(ids ...string) *UsersRequest {
 	return &UsersRequest{
-		GetUsersRequest: nkapi.GetUsersRequest{
-			Ids: ids,
-		},
+		Ids: ids,
 	}
 }
 
@@ -3675,20 +3117,10 @@ func (req *UsersRequest) Async(ctx context.Context, cl *Client, f func(*UsersRes
 	}()
 }
 
-// UsersResponse is the Users response.
-type UsersResponse = nkapi.Users
-
-// UserGroupsRequest is a request to retrieve a user's groups.
-type UserGroupsRequest struct {
-	nkapi.ListUserGroupsRequest
-}
-
 // UserGroups creates a request to retrieve a user's groups.
 func UserGroups(userId string) *UserGroupsRequest {
 	return &UserGroupsRequest{
-		ListUserGroupsRequest: nkapi.ListUserGroupsRequest{
-			UserId: userId,
-		},
+		UserId: userId,
 	}
 }
 
@@ -3699,7 +3131,7 @@ func (req *UserGroupsRequest) WithLimit(limit int) *UserGroupsRequest {
 }
 
 // WithState sets the state on the request.
-func (req *UserGroupsRequest) WithState(state GroupUserState) *UserGroupsRequest {
+func (req *UserGroupsRequest) WithState(state UserRoleState) *UserGroupsRequest {
 	req.State = wrapperspb.Int32(int32(state))
 	return req
 }
@@ -3735,6 +3167,3 @@ func (req *UserGroupsRequest) Async(ctx context.Context, cl *Client, f func(*Use
 		f(req.Do(ctx, cl))
 	}()
 }
-
-// UserGroupsResponse is the ListUserGroups response.
-type UserGroupsResponse = nkapi.UserGroupList

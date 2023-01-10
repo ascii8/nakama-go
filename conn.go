@@ -13,7 +13,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/heroiclabs/nakama-common/rtapi"
 	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -114,7 +113,7 @@ func NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
 
 // marshal marshals the message. If the format set on the connection is json,
 // then the message will be marshaled using json encoding.
-func (conn *Conn) marshal(env *rtapi.Envelope) ([]byte, error) {
+func (conn *Conn) marshal(env *Envelope) ([]byte, error) {
 	f := proto.Marshal
 	if !conn.binary {
 		f = protojson.Marshal
@@ -124,12 +123,12 @@ func (conn *Conn) marshal(env *rtapi.Envelope) ([]byte, error) {
 
 // unmarshal unmarshals the message. If the format set on the connection is
 // json, then v will be unmarshaled using json encoding.
-func (conn *Conn) unmarshal(buf []byte) (*rtapi.Envelope, error) {
+func (conn *Conn) unmarshal(buf []byte) (*Envelope, error) {
 	f := proto.Unmarshal
 	if !conn.binary {
 		f = protojson.Unmarshal
 	}
-	env := new(rtapi.Envelope)
+	env := new(Envelope)
 	if err := f(buf, env); err != nil {
 		return nil, err
 	}
@@ -229,56 +228,56 @@ func (conn *Conn) recv(ctx context.Context, buf []byte) error {
 }
 
 // recvNotify dispaches events and received updates.
-func (conn *Conn) recvNotify(ctx context.Context, env *rtapi.Envelope) error {
+func (conn *Conn) recvNotify(ctx context.Context, env *Envelope) error {
 	switch v := env.Message.(type) {
-	case *rtapi.Envelope_Error:
+	case *Envelope_Error:
 		if conn.ErrorHandler != nil {
-			go conn.ErrorHandler(ctx, &ErrorMsg{*v.Error})
+			go conn.ErrorHandler(ctx, v.Error)
 		}
 		return NewRealtimeError(v.Error)
-	case *rtapi.Envelope_ChannelMessage:
+	case *Envelope_ChannelMessage:
 		if conn.ChannelMessageHandler != nil {
-			go conn.ChannelMessageHandler(ctx, &ChannelMessageMsg{*v.ChannelMessage})
+			go conn.ChannelMessageHandler(ctx, v.ChannelMessage)
 		}
 		return nil
-	case *rtapi.Envelope_ChannelPresenceEvent:
+	case *Envelope_ChannelPresenceEvent:
 		if conn.ChannelPresenceEventHandler != nil {
-			go conn.ChannelPresenceEventHandler(ctx, &ChannelPresenceEventMsg{*v.ChannelPresenceEvent})
+			go conn.ChannelPresenceEventHandler(ctx, v.ChannelPresenceEvent)
 		}
 		return nil
-	case *rtapi.Envelope_MatchData:
+	case *Envelope_MatchData:
 		if conn.MatchDataHandler != nil {
-			go conn.MatchDataHandler(ctx, &MatchDataMsg{*v.MatchData})
+			go conn.MatchDataHandler(ctx, v.MatchData)
 		}
 		return nil
-	case *rtapi.Envelope_MatchPresenceEvent:
+	case *Envelope_MatchPresenceEvent:
 		if conn.MatchPresenceEventHandler != nil {
-			go conn.MatchPresenceEventHandler(ctx, &MatchPresenceEventMsg{*v.MatchPresenceEvent})
+			go conn.MatchPresenceEventHandler(ctx, v.MatchPresenceEvent)
 		}
 		return nil
-	case *rtapi.Envelope_MatchmakerMatched:
+	case *Envelope_MatchmakerMatched:
 		if conn.MatchmakerMatchedHandler != nil {
-			go conn.MatchmakerMatchedHandler(ctx, &MatchmakerMatchedMsg{*v.MatchmakerMatched})
+			go conn.MatchmakerMatchedHandler(ctx, v.MatchmakerMatched)
 		}
 		return nil
-	case *rtapi.Envelope_Notifications:
+	case *Envelope_Notifications:
 		if conn.NotificationsHandler != nil {
-			go conn.NotificationsHandler(ctx, &NotificationsMsg{*v.Notifications})
+			go conn.NotificationsHandler(ctx, v.Notifications)
 		}
 		return nil
-	case *rtapi.Envelope_StatusPresenceEvent:
+	case *Envelope_StatusPresenceEvent:
 		if conn.StatusPresenceEventHandler != nil {
-			go conn.StatusPresenceEventHandler(ctx, &StatusPresenceEventMsg{*v.StatusPresenceEvent})
+			go conn.StatusPresenceEventHandler(ctx, v.StatusPresenceEvent)
 		}
 		return nil
-	case *rtapi.Envelope_StreamData:
+	case *Envelope_StreamData:
 		if conn.StreamDataHandler != nil {
-			go conn.StreamDataHandler(ctx, &StreamDataMsg{*v.StreamData})
+			go conn.StreamDataHandler(ctx, v.StreamData)
 		}
 		return nil
-	case *rtapi.Envelope_StreamPresenceEvent:
+	case *Envelope_StreamPresenceEvent:
 		if conn.StreamPresenceEventHandler != nil {
-			go conn.StreamPresenceEventHandler(ctx, &StreamPresenceEventMsg{*v.StreamPresenceEvent})
+			go conn.StreamPresenceEventHandler(ctx, v.StreamPresenceEvent)
 		}
 		return nil
 	}
@@ -286,7 +285,7 @@ func (conn *Conn) recvNotify(ctx context.Context, env *rtapi.Envelope) error {
 }
 
 // recvResponse dispatches a received a response (messages with cid != "").
-func (conn *Conn) recvResponse(env *rtapi.Envelope) error {
+func (conn *Conn) recvResponse(env *Envelope) error {
 	conn.rw.RLock()
 	req, ok := conn.l[env.Cid]
 	conn.rw.RUnlock()
@@ -301,7 +300,7 @@ func (conn *Conn) recvResponse(env *rtapi.Envelope) error {
 		conn.rw.Unlock()
 	}()
 	// check error
-	if v, ok := env.Message.(*rtapi.Envelope_Error); ok {
+	if v, ok := env.Message.(*Envelope_Error); ok {
 		conn.h.Errf("error: %+v", v.Error)
 		req.err <- NewRealtimeError(v.Error)
 		return nil
@@ -348,7 +347,7 @@ func (conn *Conn) Close() error {
 }
 
 // ChannelJoin sends a message to join a chat channel.
-func (conn *Conn) ChannelJoin(ctx context.Context, target string, typ ChannelJoinType, persistence, hidden bool) (*ChannelMsg, error) {
+func (conn *Conn) ChannelJoin(ctx context.Context, target string, typ ChannelType, persistence, hidden bool) (*ChannelMsg, error) {
 	return ChannelJoin(target, typ).
 		WithPersistence(persistence).
 		WithHidden(hidden).
@@ -356,7 +355,7 @@ func (conn *Conn) ChannelJoin(ctx context.Context, target string, typ ChannelJoi
 }
 
 // ChannelJoinAsync sends a message to join a chat channel.
-func (conn *Conn) ChannelJoinAsync(ctx context.Context, target string, typ ChannelJoinType, persistence, hidden bool, f func(*ChannelMsg, error)) {
+func (conn *Conn) ChannelJoinAsync(ctx context.Context, target string, typ ChannelType, persistence, hidden bool, f func(*ChannelMsg, error)) {
 	ChannelJoin(target, typ).
 		WithPersistence(persistence).
 		WithHidden(hidden).
@@ -660,16 +659,16 @@ type req struct {
 
 // RealtimeError wraps a nakama realtime websocket error.
 type RealtimeError struct {
-	Code    rtapi.Error_Code
+	Code    ErrorCode
 	Message string
 	Context map[string]string
 }
 
 // NewRealtimeError creates a nakama realtime websocket error from an error
 // message.
-func NewRealtimeError(err *rtapi.Error) error {
+func NewRealtimeError(err *ErrorMsg) error {
 	return &RealtimeError{
-		Code:    rtapi.Error_Code(err.Code),
+		Code:    err.Code,
 		Message: err.Message,
 		Context: err.Context,
 	}

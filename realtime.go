@@ -3,80 +3,28 @@ package nakama
 import (
 	"context"
 
-	nkapi "github.com/heroiclabs/nakama-common/api"
-	rtapi "github.com/heroiclabs/nakama-common/rtapi"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // EnvelopeBuilder is the shared interface for realtime messages.
 type EnvelopeBuilder interface {
-	BuildEnvelope() *rtapi.Envelope
-}
-
-// ChannelJoinType is the channel join type.
-type ChannelJoinType = rtapi.ChannelJoin_Type
-
-// ChannelJoinType values.
-const (
-	// Default case. Assumed as ROOM type.
-	ChannelJoinUnspecified ChannelJoinType = rtapi.ChannelJoin_TYPE_UNSPECIFIED
-	// A room which anyone can join to chat.
-	ChannelJoinRoom ChannelJoinType = rtapi.ChannelJoin_ROOM
-	// A private channel for 1-on-1 chat.
-	ChannelJoinDirectMessage ChannelJoinType = rtapi.ChannelJoin_DIRECT_MESSAGE
-	// A channel for group chat.
-	ChannelJoinGroup ChannelJoinType = rtapi.ChannelJoin_GROUP
-)
-
-// ErrorCode is the error code type.
-type ErrorCode = rtapi.Error_Code
-
-// ErrorCode values.
-const (
-	// An unexpected result from the server.
-	ErrRuntimeException ErrorCode = rtapi.Error_RUNTIME_EXCEPTION
-	// The server received a message which is not recognised.
-	ErrUnrecognizedPlayload ErrorCode = rtapi.Error_UNRECOGNIZED_PAYLOAD
-	// A message was expected but contains no content.
-	ErrMissingPayload ErrorCode = rtapi.Error_MISSING_PAYLOAD
-	// Fields in the message have an invalid format.
-	ErrBadInput ErrorCode = rtapi.Error_BAD_INPUT
-	// The match id was not found.
-	ErrMatchNotFound ErrorCode = rtapi.Error_MATCH_NOT_FOUND
-	// The match join was rejected.
-	ErrMatchJoinRejected ErrorCode = rtapi.Error_MATCH_JOIN_REJECTED
-	// The runtime function does not exist on the server.
-	ErrRuntimeFunctionNotFound ErrorCode = rtapi.Error_RUNTIME_FUNCTION_NOT_FOUND
-	// The runtime function executed with an error.
-	ErrRuntimeFunctionException ErrorCode = rtapi.Error_RUNTIME_FUNCTION_EXCEPTION
-)
-
-// ChannelMsg is a realtime channel message.
-type ChannelMsg struct {
-	rtapi.Channel
+	BuildEnvelope() *Envelope
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *ChannelMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_Channel{
-			Channel: &msg.Channel,
+func (msg *ChannelMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_Channel{
+			Channel: msg,
 		},
 	}
 }
 
-// ChannelJoinMsg is a realtime message to join a chat channel.
-type ChannelJoinMsg struct {
-	rtapi.ChannelJoin
-}
-
 // ChannelJoin creates a realtime message to join a chat channel.
-func ChannelJoin(target string, typ ChannelJoinType) *ChannelJoinMsg {
+func ChannelJoin(target string, typ ChannelType) *ChannelJoinMsg {
 	return &ChannelJoinMsg{
-		ChannelJoin: rtapi.ChannelJoin{
-			Target: target,
-			Type:   int32(typ),
-		},
+		Target: target,
+		Type:   typ,
 	}
 }
 
@@ -93,10 +41,10 @@ func (msg *ChannelJoinMsg) WithHidden(hidden bool) *ChannelJoinMsg {
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *ChannelJoinMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_ChannelJoin{
-			ChannelJoin: &msg.ChannelJoin,
+func (msg *ChannelJoinMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_ChannelJoin{
+			ChannelJoin: msg,
 		},
 	}
 }
@@ -117,25 +65,18 @@ func (msg *ChannelJoinMsg) Async(ctx context.Context, conn *Conn, f func(*Channe
 	}()
 }
 
-// ChannelLeaveMsg is a realtime message to leave a chat channel.
-type ChannelLeaveMsg struct {
-	rtapi.ChannelLeave
-}
-
 // ChannelLeave creates a realtime message to leave a chat channel.
 func ChannelLeave(channelId string) *ChannelLeaveMsg {
 	return &ChannelLeaveMsg{
-		ChannelLeave: rtapi.ChannelLeave{
-			ChannelId: channelId,
-		},
+		ChannelId: channelId,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *ChannelLeaveMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_ChannelLeave{
-			ChannelLeave: &msg.ChannelLeave,
+func (msg *ChannelLeaveMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_ChannelLeave{
+			ChannelLeave: msg,
 		},
 	}
 }
@@ -153,53 +94,39 @@ func (msg *ChannelLeaveMsg) Async(ctx context.Context, conn *Conn, f func(error)
 }
 
 // ChannelMessageMsg is a realtime channel message message.
-type ChannelMessageMsg struct {
-	nkapi.ChannelMessage
-}
+type ChannelMessageMsg = ChannelMessage
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *ChannelMessageMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_ChannelMessage{
-			ChannelMessage: &msg.ChannelMessage,
+func (msg *ChannelMessageMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_ChannelMessage{
+			ChannelMessage: msg,
 		},
 	}
 }
 
-// ChannelMessageAckMsg is a realtime channel message ack message.
-type ChannelMessageAckMsg struct {
-	rtapi.ChannelMessageAck
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *ChannelMessageAckMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_ChannelMessageAck{
-			ChannelMessageAck: &msg.ChannelMessageAck,
+func (msg *ChannelMessageAckMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_ChannelMessageAck{
+			ChannelMessageAck: msg,
 		},
 	}
-}
-
-// ChannelMessageRemoveMsg is a realtime message to remove a message from a channel.
-type ChannelMessageRemoveMsg struct {
-	rtapi.ChannelMessageRemove
 }
 
 // ChannelMessageRemove creates a realtime message to remove a message from a channel.
 func ChannelMessageRemove(channelId, messageId string) *ChannelMessageRemoveMsg {
 	return &ChannelMessageRemoveMsg{
-		ChannelMessageRemove: rtapi.ChannelMessageRemove{
-			ChannelId: channelId,
-			MessageId: messageId,
-		},
+		ChannelId: channelId,
+		MessageId: messageId,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *ChannelMessageRemoveMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_ChannelMessageRemove{
-			ChannelMessageRemove: &msg.ChannelMessageRemove,
+func (msg *ChannelMessageRemoveMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_ChannelMessageRemove{
+			ChannelMessageRemove: msg,
 		},
 	}
 }
@@ -220,26 +147,19 @@ func (msg *ChannelMessageRemoveMsg) Async(ctx context.Context, conn *Conn, f fun
 	}()
 }
 
-// ChannelMessageSendMsg is a realtime message to send a message on a channel.
-type ChannelMessageSendMsg struct {
-	rtapi.ChannelMessageSend
-}
-
 // ChannelMessageSend creates a realtime message to send a message on a channel.
 func ChannelMessageSend(channelId, content string) *ChannelMessageSendMsg {
 	return &ChannelMessageSendMsg{
-		ChannelMessageSend: rtapi.ChannelMessageSend{
-			ChannelId: channelId,
-			Content:   content,
-		},
+		ChannelId: channelId,
+		Content:   content,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *ChannelMessageSendMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_ChannelMessageSend{
-			ChannelMessageSend: &msg.ChannelMessageSend,
+func (msg *ChannelMessageSendMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_ChannelMessageSend{
+			ChannelMessageSend: msg,
 		},
 	}
 }
@@ -260,27 +180,20 @@ func (msg *ChannelMessageSendMsg) Async(ctx context.Context, conn *Conn, f func(
 	}()
 }
 
-// ChannelMessageUpdateMsg is a realtime message to update a message on a channel.
-type ChannelMessageUpdateMsg struct {
-	rtapi.ChannelMessageUpdate
-}
-
 // ChannelMessageUpdate creates a realtime message to update a message on a channel.
 func ChannelMessageUpdate(channelId, messageId, content string) *ChannelMessageUpdateMsg {
 	return &ChannelMessageUpdateMsg{
-		ChannelMessageUpdate: rtapi.ChannelMessageUpdate{
-			ChannelId: channelId,
-			MessageId: messageId,
-			Content:   content,
-		},
+		ChannelId: channelId,
+		MessageId: messageId,
+		Content:   content,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *ChannelMessageUpdateMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_ChannelMessageUpdate{
-			ChannelMessageUpdate: &msg.ChannelMessageUpdate,
+func (msg *ChannelMessageUpdateMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_ChannelMessageUpdate{
+			ChannelMessageUpdate: msg,
 		},
 	}
 }
@@ -301,67 +214,45 @@ func (msg *ChannelMessageUpdateMsg) Async(ctx context.Context, conn *Conn, f fun
 	}()
 }
 
-// ChannelPresenceEventMsg is a realtime channel presence event message.
-type ChannelPresenceEventMsg struct {
-	rtapi.ChannelPresenceEvent
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *ChannelPresenceEventMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_ChannelPresenceEvent{
-			ChannelPresenceEvent: &msg.ChannelPresenceEvent,
+func (msg *ChannelPresenceEventMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_ChannelPresenceEvent{
+			ChannelPresenceEvent: msg,
 		},
 	}
 }
 
-// ErrorMsg is a realtime error message.
-type ErrorMsg struct {
-	rtapi.Error
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *ErrorMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_Error{
-			Error: &msg.Error,
+func (msg *ErrorMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_Error{
+			Error: msg,
 		},
 	}
 }
 
-// MatchMsg is a realtime match message.
-type MatchMsg struct {
-	rtapi.Match
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *MatchMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_Match{
-			Match: &msg.Match,
+func (msg *MatchMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_Match{
+			Match: msg,
 		},
 	}
-}
-
-// MatchCreateMsg is a realtime message to create a multiplayer match.
-type MatchCreateMsg struct {
-	rtapi.MatchCreate
 }
 
 // MatchCreate creates a realtime message to create a multiplayer match.
 func MatchCreate(name string) *MatchCreateMsg {
 	return &MatchCreateMsg{
-		MatchCreate: rtapi.MatchCreate{
-			Name: name,
-		},
+		Name: name,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *MatchCreateMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_MatchCreate{
-			MatchCreate: &msg.MatchCreate,
+func (msg *MatchCreateMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_MatchCreate{
+			MatchCreate: msg,
 		},
 	}
 }
@@ -382,52 +273,36 @@ func (msg *MatchCreateMsg) Async(ctx context.Context, conn *Conn, f func(*MatchM
 	}()
 }
 
-// MatchDataMsg is a realtime match data message.
-type MatchDataMsg struct {
-	rtapi.MatchData
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *MatchDataMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_MatchData{
-			MatchData: &msg.MatchData,
+func (msg *MatchDataMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_MatchData{
+			MatchData: msg,
 		},
 	}
-}
-
-// MatchDataSendMsg is a realtime message to send input to a multiplayer match.
-type MatchDataSendMsg struct {
-	rtapi.MatchDataSend
 }
 
 // MatchDataSend creates a realtime message to send input to a multiplayer match.
 func MatchDataSend(matchId string, opCode int64, data []byte) *MatchDataSendMsg {
 	return &MatchDataSendMsg{
-		MatchDataSend: rtapi.MatchDataSend{
-			MatchId: matchId,
-			OpCode:  opCode,
-			Data:    data,
-		},
+		MatchId: matchId,
+		OpCode:  opCode,
+		Data:    data,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *MatchDataSendMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_MatchDataSend{
-			MatchDataSend: &msg.MatchDataSend,
+func (msg *MatchDataSendMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_MatchDataSend{
+			MatchDataSend: msg,
 		},
 	}
 }
 
 // WithPresences sets the presences on the message.
 func (msg *MatchDataSendMsg) WithPresences(presences ...*UserPresenceMsg) *MatchDataSendMsg {
-	p := make([]*rtapi.UserPresence, len(presences))
-	for i, presence := range presences {
-		p[i] = &presence.UserPresence
-	}
-	msg.Presences = p
+	msg.Presences = presences
 	return msg
 }
 
@@ -449,18 +324,11 @@ func (msg *MatchDataSendMsg) Async(ctx context.Context, conn *Conn, f func(error
 	}()
 }
 
-// MatchJoinMsg is a realtime message to join a match.
-type MatchJoinMsg struct {
-	rtapi.MatchJoin
-}
-
 // MatchJoin creates a realtime message to join a match.
 func MatchJoin(matchId string) *MatchJoinMsg {
 	return &MatchJoinMsg{
-		MatchJoin: rtapi.MatchJoin{
-			Id: &rtapi.MatchJoin_MatchId{
-				MatchId: matchId,
-			},
+		Id: &MatchJoinMsg_MatchId{
+			MatchId: matchId,
 		},
 	}
 }
@@ -468,19 +336,17 @@ func MatchJoin(matchId string) *MatchJoinMsg {
 // MatchJoinToken creates a new realtime to join a match with a token.
 func MatchJoinToken(token string) *MatchJoinMsg {
 	return &MatchJoinMsg{
-		MatchJoin: rtapi.MatchJoin{
-			Id: &rtapi.MatchJoin_Token{
-				Token: token,
-			},
+		Id: &MatchJoinMsg_Token{
+			Token: token,
 		},
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *MatchJoinMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_MatchJoin{
-			MatchJoin: &msg.MatchJoin,
+func (msg *MatchJoinMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_MatchJoin{
+			MatchJoin: msg,
 		},
 	}
 }
@@ -507,25 +373,18 @@ func (msg *MatchJoinMsg) Async(ctx context.Context, conn *Conn, f func(*MatchMsg
 	}()
 }
 
-// MatchLeaveMsg is a realtime message to leave a multiplayer match.
-type MatchLeaveMsg struct {
-	rtapi.MatchLeave
-}
-
 // MatchLeave creates a realtime message to leave a multiplayer match.
 func MatchLeave(matchId string) *MatchLeaveMsg {
 	return &MatchLeaveMsg{
-		MatchLeave: rtapi.MatchLeave{
-			MatchId: matchId,
-		},
+		MatchId: matchId,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *MatchLeaveMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_MatchLeave{
-			MatchLeave: &msg.MatchLeave,
+func (msg *MatchLeaveMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_MatchLeave{
+			MatchLeave: msg,
 		},
 	}
 }
@@ -542,41 +401,29 @@ func (msg *MatchLeaveMsg) Async(ctx context.Context, conn *Conn, f func(error)) 
 	}()
 }
 
-// MatchPresenceEventMsg is a realtime match presence event message.
-type MatchPresenceEventMsg struct {
-	rtapi.MatchPresenceEvent
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *MatchPresenceEventMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_MatchPresenceEvent{
-			MatchPresenceEvent: &msg.MatchPresenceEvent,
+func (msg *MatchPresenceEventMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_MatchPresenceEvent{
+			MatchPresenceEvent: msg,
 		},
 	}
-}
-
-// MatchmakerAddMsg is a realtime message to join the matchmaker pool and search for opponents on the server.
-type MatchmakerAddMsg struct {
-	rtapi.MatchmakerAdd
 }
 
 // MatchmakerAdd creates a realtime message to join the matchmaker pool and search for opponents on the server.
 func MatchmakerAdd(query string, minCount, maxCount int) *MatchmakerAddMsg {
 	return &MatchmakerAddMsg{
-		MatchmakerAdd: rtapi.MatchmakerAdd{
-			Query:    query,
-			MinCount: int32(minCount),
-			MaxCount: int32(maxCount),
-		},
+		Query:    query,
+		MinCount: int32(minCount),
+		MaxCount: int32(maxCount),
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *MatchmakerAddMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_MatchmakerAdd{
-			MatchmakerAdd: &msg.MatchmakerAdd,
+func (msg *MatchmakerAddMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_MatchmakerAdd{
+			MatchmakerAdd: msg,
 		},
 	}
 }
@@ -615,39 +462,27 @@ func (msg *MatchmakerAddMsg) Async(ctx context.Context, conn *Conn, f func(*Matc
 	}()
 }
 
-// MatchmakerMatchedMsg is a realtime matchmaker matched message.
-type MatchmakerMatchedMsg struct {
-	rtapi.MatchmakerMatched
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *MatchmakerMatchedMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_MatchmakerMatched{
-			MatchmakerMatched: &msg.MatchmakerMatched,
+func (msg *MatchmakerMatchedMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_MatchmakerMatched{
+			MatchmakerMatched: msg,
 		},
 	}
-}
-
-// MatchmakerRemoveMsg is a realtime message to leave the matchmaker pool for a ticket.
-type MatchmakerRemoveMsg struct {
-	rtapi.MatchmakerRemove
 }
 
 // MatchmakerRemove creates a realtime message to leave the matchmaker pool for a ticket.
 func MatchmakerRemove(ticket string) *MatchmakerRemoveMsg {
 	return &MatchmakerRemoveMsg{
-		MatchmakerRemove: rtapi.MatchmakerRemove{
-			Ticket: ticket,
-		},
+		Ticket: ticket,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *MatchmakerRemoveMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_MatchmakerRemove{
-			MatchmakerRemove: &msg.MatchmakerRemove,
+func (msg *MatchmakerRemoveMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_MatchmakerRemove{
+			MatchmakerRemove: msg,
 		},
 	}
 }
@@ -664,68 +499,46 @@ func (msg *MatchmakerRemoveMsg) Async(ctx context.Context, conn *Conn, f func(er
 	}()
 }
 
-// MatchmakerTicketMsg is a realtime matchmaker ticket message.
-type MatchmakerTicketMsg struct {
-	rtapi.MatchmakerTicket
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *MatchmakerTicketMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_MatchmakerTicket{
-			MatchmakerTicket: &msg.MatchmakerTicket,
+func (msg *MatchmakerTicketMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_MatchmakerTicket{
+			MatchmakerTicket: msg,
 		},
 	}
 }
 
-// NotificationsMsg is a realtime notifications message.
-type NotificationsMsg struct {
-	rtapi.Notifications
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *NotificationsMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_Notifications{
-			Notifications: &msg.Notifications,
+func (msg *NotificationsMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_Notifications{
+			Notifications: msg,
 		},
 	}
 }
 
-// PartyMsg is a realtime party message.
-type PartyMsg struct {
-	rtapi.Party
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_Party{
-			Party: &msg.Party,
+func (msg *PartyMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_Party{
+			Party: msg,
 		},
 	}
-}
-
-// PartyAcceptMsg is a realtime message to accept a party member.
-type PartyAcceptMsg struct {
-	rtapi.PartyAccept
 }
 
 // PartyAccept creates a realtime message to accept a party member.
 func PartyAccept(partyId string, presence *UserPresenceMsg) *PartyAcceptMsg {
 	return &PartyAcceptMsg{
-		PartyAccept: rtapi.PartyAccept{
-			PartyId:  partyId,
-			Presence: &presence.UserPresence,
-		},
+		PartyId:  partyId,
+		Presence: presence,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyAcceptMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyAccept{
-			PartyAccept: &msg.PartyAccept,
+func (msg *PartyAcceptMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyAccept{
+			PartyAccept: msg,
 		},
 	}
 }
@@ -742,25 +555,18 @@ func (msg *PartyAcceptMsg) Async(ctx context.Context, conn *Conn, f func(error))
 	}()
 }
 
-// PartyCloseMsg is a realtime message to close a party, kicking all party members.
-type PartyCloseMsg struct {
-	rtapi.PartyClose
-}
-
 // PartyClose creates a realtime message to close a party, kicking all party members.
 func PartyClose(partyId string) *PartyCloseMsg {
 	return &PartyCloseMsg{
-		PartyClose: rtapi.PartyClose{
-			PartyId: partyId,
-		},
+		PartyId: partyId,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyCloseMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyClose{
-			PartyClose: &msg.PartyClose,
+func (msg *PartyCloseMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyClose{
+			PartyClose: msg,
 		},
 	}
 }
@@ -777,26 +583,19 @@ func (msg *PartyCloseMsg) Async(ctx context.Context, conn *Conn, f func(error)) 
 	}()
 }
 
-// PartyCreateMsg is a realtime message to create a party.
-type PartyCreateMsg struct {
-	rtapi.PartyCreate
-}
-
 // PartyCreate creates a realtime message to create a party.
 func PartyCreate(open bool, maxSize int) *PartyCreateMsg {
 	return &PartyCreateMsg{
-		PartyCreate: rtapi.PartyCreate{
-			Open:    open,
-			MaxSize: int32(maxSize),
-		},
+		Open:    open,
+		MaxSize: int32(maxSize),
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyCreateMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyCreate{
-			PartyCreate: &msg.PartyCreate,
+func (msg *PartyCreateMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyCreate{
+			PartyCreate: msg,
 		},
 	}
 }
@@ -817,27 +616,20 @@ func (msg *PartyCreateMsg) Async(ctx context.Context, conn *Conn, f func(*PartyM
 	}()
 }
 
-// PartyDataSendMsg is a realtime message to send data to a party.
-type PartyDataSendMsg struct {
-	rtapi.PartyDataSend
-}
-
 // PartyDataSend creates a realtime message to send data to a party.
 func PartyDataSend(partyId string, opCode OpType, data []byte) *PartyDataSendMsg {
 	return &PartyDataSendMsg{
-		PartyDataSend: rtapi.PartyDataSend{
-			PartyId: partyId,
-			OpCode:  int64(opCode),
-			Data:    data,
-		},
+		PartyId: partyId,
+		OpCode:  int64(opCode),
+		Data:    data,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyDataSendMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyDataSend{
-			PartyDataSend: &msg.PartyDataSend,
+func (msg *PartyDataSendMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyDataSend{
+			PartyDataSend: msg,
 		},
 	}
 }
@@ -854,25 +646,18 @@ func (msg *PartyDataSendMsg) Async(ctx context.Context, conn *Conn, f func(error
 	}()
 }
 
-// PartyJoinMsg is a realtime message to join a party.
-type PartyJoinMsg struct {
-	rtapi.PartyJoin
-}
-
 // PartyJoin creates a realtime message to join a party.
 func PartyJoin(partyId string) *PartyJoinMsg {
 	return &PartyJoinMsg{
-		PartyJoin: rtapi.PartyJoin{
-			PartyId: partyId,
-		},
+		PartyId: partyId,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyJoinMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyJoin{
-			PartyJoin: &msg.PartyJoin,
+func (msg *PartyJoinMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyJoin{
+			PartyJoin: msg,
 		},
 	}
 }
@@ -889,25 +674,18 @@ func (msg *PartyJoinMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	}()
 }
 
-// PartyJoinRequestsMsg is a realtime message to request the list of pending join requests for a party.
-type PartyJoinRequestsMsg struct {
-	rtapi.PartyJoinRequestList
-}
-
 // PartyJoinRequests creates a realtime message to request the list of pending join requests for a party.
 func PartyJoinRequests(partyId string) *PartyJoinRequestsMsg {
 	return &PartyJoinRequestsMsg{
-		PartyJoinRequestList: rtapi.PartyJoinRequestList{
-			PartyId: partyId,
-		},
+		PartyId: partyId,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyJoinRequestsMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyJoinRequestList{
-			PartyJoinRequestList: &msg.PartyJoinRequestList,
+func (msg *PartyJoinRequestsMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyJoinRequestList{
+			PartyJoinRequestList: msg,
 		},
 	}
 }
@@ -928,53 +706,36 @@ func (msg *PartyJoinRequestsMsg) Async(ctx context.Context, conn *Conn, f func(*
 	}()
 }
 
-// PartyJoinRequestMsg is a realtime party join request message.
-type PartyJoinRequestMsg struct {
-	rtapi.PartyJoinRequest
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyJoinRequestMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyJoinRequest{
-			PartyJoinRequest: &msg.PartyJoinRequest,
+func (msg *PartyJoinRequestMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyJoinRequest{
+			PartyJoinRequest: msg,
 		},
 	}
 }
 
-// PartyLeaderMsg is a realtime party leader message.
-type PartyLeaderMsg struct {
-	rtapi.PartyLeader
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyLeaderMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyLeader{
-			PartyLeader: &msg.PartyLeader,
+func (msg *PartyLeaderMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyLeader{
+			PartyLeader: msg,
 		},
 	}
-}
-
-// PartyLeaveMsg is a realtime message to leave a party.
-type PartyLeaveMsg struct {
-	rtapi.PartyLeave
 }
 
 // PartyLeave creates a realtime message to leave a party.
 func PartyLeave(partyId string) *PartyLeaveMsg {
 	return &PartyLeaveMsg{
-		PartyLeave: rtapi.PartyLeave{
-			PartyId: partyId,
-		},
+		PartyId: partyId,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyLeaveMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyLeave{
-			PartyLeave: &msg.PartyLeave,
+func (msg *PartyLeaveMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyLeave{
+			PartyLeave: msg,
 		},
 	}
 }
@@ -991,28 +752,21 @@ func (msg *PartyLeaveMsg) Async(ctx context.Context, conn *Conn, f func(error)) 
 	}()
 }
 
-// PartyMatchmakerAddMsg is a realtime message to begin matchmaking as a party.
-type PartyMatchmakerAddMsg struct {
-	rtapi.PartyMatchmakerAdd
-}
-
 // PartyMatchmakerAdd creates a realtime message to begin matchmaking as a party.
 func PartyMatchmakerAdd(partyId, query string, minCount, maxCount int) *PartyMatchmakerAddMsg {
 	return &PartyMatchmakerAddMsg{
-		PartyMatchmakerAdd: rtapi.PartyMatchmakerAdd{
-			PartyId:  partyId,
-			Query:    query,
-			MinCount: int32(minCount),
-			MaxCount: int32(maxCount),
-		},
+		PartyId:  partyId,
+		Query:    query,
+		MinCount: int32(minCount),
+		MaxCount: int32(maxCount),
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyMatchmakerAddMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyMatchmakerAdd{
-			PartyMatchmakerAdd: &msg.PartyMatchmakerAdd,
+func (msg *PartyMatchmakerAddMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyMatchmakerAdd{
+			PartyMatchmakerAdd: msg,
 		},
 	}
 }
@@ -1051,26 +805,19 @@ func (msg *PartyMatchmakerAddMsg) Async(ctx context.Context, conn *Conn, f func(
 	}()
 }
 
-// PartyMatchmakerRemoveMsg is a realtime message to cancel a party matchmaking process for a ticket.
-type PartyMatchmakerRemoveMsg struct {
-	rtapi.PartyMatchmakerRemove
-}
-
 // PartyMatchmakerRemove creates a realtime message to cancel a party matchmaking process for a ticket.
 func PartyMatchmakerRemove(partyId, ticket string) *PartyMatchmakerRemoveMsg {
 	return &PartyMatchmakerRemoveMsg{
-		PartyMatchmakerRemove: rtapi.PartyMatchmakerRemove{
-			PartyId: partyId,
-			Ticket:  ticket,
-		},
+		PartyId: partyId,
+		Ticket:  ticket,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyMatchmakerRemoveMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyMatchmakerRemove{
-			PartyMatchmakerRemove: &msg.PartyMatchmakerRemove,
+func (msg *PartyMatchmakerRemoveMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyMatchmakerRemove{
+			PartyMatchmakerRemove: msg,
 		},
 	}
 }
@@ -1087,40 +834,28 @@ func (msg *PartyMatchmakerRemoveMsg) Async(ctx context.Context, conn *Conn, f fu
 	}()
 }
 
-// PartyMatchmakerTicketMsg is a realtime party matchmaker ticket message.
-type PartyMatchmakerTicketMsg struct {
-	rtapi.PartyMatchmakerTicket
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyMatchmakerTicketMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyMatchmakerTicket{
-			PartyMatchmakerTicket: &msg.PartyMatchmakerTicket,
+func (msg *PartyMatchmakerTicketMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyMatchmakerTicket{
+			PartyMatchmakerTicket: msg,
 		},
 	}
-}
-
-// PartyPromoteMsg is a realtime message to promote a new party leader.
-type PartyPromoteMsg struct {
-	rtapi.PartyPromote
 }
 
 // PartyPromote creates a realtime message to promote a new party leader.
 func PartyPromote(partyId string, presence *UserPresenceMsg) *PartyPromoteMsg {
 	return &PartyPromoteMsg{
-		PartyPromote: rtapi.PartyPromote{
-			PartyId:  partyId,
-			Presence: &presence.UserPresence,
-		},
+		PartyId:  partyId,
+		Presence: presence,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyPromoteMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyPromote{
-			PartyPromote: &msg.PartyPromote,
+func (msg *PartyPromoteMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyPromote{
+			PartyPromote: msg,
 		},
 	}
 }
@@ -1141,26 +876,19 @@ func (msg *PartyPromoteMsg) Async(ctx context.Context, conn *Conn, f func(*Party
 	}()
 }
 
-// PartyRemoveMsg is a realtime message to kick a party member or decline a request to join.
-type PartyRemoveMsg struct {
-	rtapi.PartyRemove
-}
-
 // PartyRemove creates a realtime message to kick a party member or decline a request to join.
 func PartyRemove(partyId string, presence *UserPresenceMsg) *PartyRemoveMsg {
 	return &PartyRemoveMsg{
-		PartyRemove: rtapi.PartyRemove{
-			PartyId:  partyId,
-			Presence: &presence.UserPresence,
-		},
+		PartyId:  partyId,
+		Presence: presence,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PartyRemoveMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_PartyRemove{
-			PartyRemove: &msg.PartyRemove,
+func (msg *PartyRemoveMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_PartyRemove{
+			PartyRemove: msg,
 		},
 	}
 }
@@ -1177,21 +905,16 @@ func (msg *PartyRemoveMsg) Async(ctx context.Context, conn *Conn, f func(error))
 	}()
 }
 
-// PingMsg is a realtime message to do a ping.
-type PingMsg struct {
-	rtapi.Ping
-}
-
 // Ping creates a realtime message to do a ping.
 func Ping() *PingMsg {
 	return &PingMsg{}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *PingMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_Ping{
-			Ping: &msg.Ping,
+func (msg *PingMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_Ping{
+			Ping: msg,
 		},
 	}
 }
@@ -1208,53 +931,36 @@ func (msg *PingMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	}()
 }
 
-// rpcMsg is a realtime rpc message.
-type rpcMsg struct {
-	nkapi.Rpc
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *rpcMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_Rpc{
-			Rpc: &msg.Rpc,
+func (msg *RpcMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_Rpc{
+			Rpc: msg,
 		},
 	}
 }
 
-// StatusMsg is a realtime status message.
-type StatusMsg struct {
-	rtapi.Status
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *StatusMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_Status{
-			Status: &msg.Status,
+func (msg *StatusMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_Status{
+			Status: msg,
 		},
 	}
-}
-
-// StatusFollowMsg is a realtime message to subscribe to user status updates.
-type StatusFollowMsg struct {
-	rtapi.StatusFollow
 }
 
 // StatusFollow creates a realtime message to subscribe to user status updates.
 func StatusFollow(userIds ...string) *StatusFollowMsg {
 	return &StatusFollowMsg{
-		StatusFollow: rtapi.StatusFollow{
-			UserIds: userIds,
-		},
+		UserIds: userIds,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *StatusFollowMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_StatusFollow{
-			StatusFollow: &msg.StatusFollow,
+func (msg *StatusFollowMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_StatusFollow{
+			StatusFollow: msg,
 		},
 	}
 }
@@ -1281,39 +987,27 @@ func (msg *StatusFollowMsg) Async(ctx context.Context, conn *Conn, f func(*Statu
 	}()
 }
 
-// StatusPresenceEventMsg is a realtime statusPresenceEvent message.
-type StatusPresenceEventMsg struct {
-	rtapi.StatusPresenceEvent
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *StatusPresenceEventMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_StatusPresenceEvent{
-			StatusPresenceEvent: &msg.StatusPresenceEvent,
+func (msg *StatusPresenceEventMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_StatusPresenceEvent{
+			StatusPresenceEvent: msg,
 		},
 	}
-}
-
-// StatusUnfollowMsg is a realtime message to unfollow user's status updates.
-type StatusUnfollowMsg struct {
-	rtapi.StatusUnfollow
 }
 
 // StatusUnfollow creates a realtime message to unfollow user's status updates.
 func StatusUnfollow(userIds ...string) *StatusUnfollowMsg {
 	return &StatusUnfollowMsg{
-		StatusUnfollow: rtapi.StatusUnfollow{
-			UserIds: userIds,
-		},
+		UserIds: userIds,
 	}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *StatusUnfollowMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_StatusUnfollow{
-			StatusUnfollow: &msg.StatusUnfollow,
+func (msg *StatusUnfollowMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_StatusUnfollow{
+			StatusUnfollow: msg,
 		},
 	}
 }
@@ -1330,21 +1024,16 @@ func (msg *StatusUnfollowMsg) Async(ctx context.Context, conn *Conn, f func(erro
 	}()
 }
 
-// StatusUpdateMsg is a realtime message to update the user's status.
-type StatusUpdateMsg struct {
-	rtapi.StatusUpdate
-}
-
 // StatusUpdate creates a realtime message to update the user's status.
 func StatusUpdate() *StatusUpdateMsg {
 	return &StatusUpdateMsg{}
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *StatusUpdateMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_StatusUpdate{
-			StatusUpdate: &msg.StatusUpdate,
+func (msg *StatusUpdateMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_StatusUpdate{
+			StatusUpdate: msg,
 		},
 	}
 }
@@ -1367,37 +1056,22 @@ func (msg *StatusUpdateMsg) Async(ctx context.Context, conn *Conn, f func(error)
 	}()
 }
 
-// StreamDataMsg is a realtime streamData message.
-type StreamDataMsg struct {
-	rtapi.StreamData
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *StreamDataMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_StreamData{
-			StreamData: &msg.StreamData,
+func (msg *StreamDataMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_StreamData{
+			StreamData: msg,
 		},
 	}
 }
 
-// StreamPresenceEventMsg is a realtime streamPresenceEvent message.
-type StreamPresenceEventMsg struct {
-	rtapi.StreamPresenceEvent
-}
-
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (msg *StreamPresenceEventMsg) BuildEnvelope() *rtapi.Envelope {
-	return &rtapi.Envelope{
-		Message: &rtapi.Envelope_StreamPresenceEvent{
-			StreamPresenceEvent: &msg.StreamPresenceEvent,
+func (msg *StreamPresenceEventMsg) BuildEnvelope() *Envelope {
+	return &Envelope{
+		Message: &Envelope_StreamPresenceEvent{
+			StreamPresenceEvent: msg,
 		},
 	}
-}
-
-// UserPresenceMsg is a realtime user presence message.
-type UserPresenceMsg struct {
-	rtapi.UserPresence
 }
 
 // UserPresence creates a new realtime user presence message.
@@ -1444,6 +1118,6 @@ func empty() emptyMsg {
 }
 
 // BuildEnvelope satisfies the EnvelopeBuilder interface.
-func (emptyMsg) BuildEnvelope() *rtapi.Envelope {
-	return new(rtapi.Envelope)
+func (emptyMsg) BuildEnvelope() *Envelope {
+	return new(Envelope)
 }
