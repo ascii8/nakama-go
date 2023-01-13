@@ -146,11 +146,9 @@ func (conn *Conn) run(ctx context.Context) {
 			}
 			_, r, err := conn.conn.Reader(ctx)
 			switch {
-			case err != nil && (errors.Is(err, context.Canceled) || errors.As(err, &websocket.CloseError{})):
-				return
 			case err != nil:
 				conn.h.Errf("reader error: %v", err)
-				continue
+				return
 			}
 			buf, err := io.ReadAll(r)
 			if err != nil {
