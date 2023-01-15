@@ -19,8 +19,8 @@ import (
 	"nhooyr.io/websocket"
 )
 
-// Handler is the interface for connection handlers.
-type Handler interface {
+// ClientHandler is the interface for connection handlers.
+type ClientHandler interface {
 	HttpClient() *http.Client
 	SocketURL() (string, error)
 	Token(context.Context) (string, error)
@@ -30,7 +30,7 @@ type Handler interface {
 
 // Conn is a nakama realtime websocket connection.
 type Conn struct {
-	h                           Handler
+	h                           ClientHandler
 	url                         string
 	token                       string
 	binary                      bool
@@ -692,9 +692,9 @@ func (err *RealtimeError) Error() string {
 // ConnOption is a nakama realtime websocket connection option.
 type ConnOption func(*Conn)
 
-// WithConnHandler is a nakama websocket connection option to set the Handler
-// used.
-func WithConnHandler(h Handler) ConnOption {
+// WithConnClientHandler is a nakama websocket connection option to set the
+// ClientHandler used.
+func WithConnClientHandler(h ClientHandler) ConnOption {
 	return func(conn *Conn) {
 		conn.h = h
 	}
@@ -755,5 +755,101 @@ func WithConnLang(lang string) ConnOption {
 func WithConnCreateStatus(status bool) ConnOption {
 	return func(conn *Conn) {
 		conn.query.Set("status", strconv.FormatBool(status))
+	}
+}
+
+// WithConnHandler is a nakama websocket connection option to set message
+// handlers.
+//
+// Checks, with a type cast, if the supplied handler supports:
+//
+//	interface{
+//		<MessageType>Handler(context.Context, *<MessageType>Msg)
+//	}
+//
+// When handler supports the necessary interface, then it will be set as the Conn member's
+// <MessageType>Handler. For example, given the following type:
+//
+//	type MyClient struct{}
+//
+//	func (cl *MyClient) MatchDataHandler(context.Context, *nakama.MatchDataMsg) {}
+//	func (cl *MyClient) NotificationsHandler(context.Context, *nakama.NotificationsMsg) {}
+//
+// The following:
+//
+//	myClient := &MyClient{}
+//	conn, err := cl.NewConn(ctx, nakama.WithConnHandler(myClient))
+//
+// Is equivalent to:
+//
+//	myClient := &MyClient{}
+//	conn, err := cl.NewConn(ctx)
+//	conn.MatchDataHandler = myClient.MatchDataHandler
+//	conn.NotificationsHandler = myClient.NotificationsHandler
+//
+// Supports:
+//
+//	ErrorHandler(context.Context, *ErrorMsg)
+//	ChannelMessageHandler(context.Context, *ChannelMessageMsg)
+//	ChannelPresenceEventHandler(context.Context, *ChannelPresenceEventMsg)
+//	MatchDataHandler(context.Context, *MatchDataMsg)
+//	MatchPresenceEventHandler(context.Context, *MatchPresenceEventMsg)
+//	MatchmakerMatchedHandler(context.Context, *MatchmakerMatchedMsg)
+//	NotificationsHandler(context.Context, *NotificationsMsg)
+//	StatusPresenceEventHandler(context.Context, *StatusPresenceEventMsg)
+//	StreamDataHandler(context.Context, *StreamDataMsg)
+//	StreamPresenceEventHandler(context.Context, *StreamPresenceEventMsg)
+func WithConnHandler(handler interface{}) ConnOption {
+	return func(conn *Conn) {
+		if x, ok := handler.(interface {
+			ErrorHandler(context.Context, *ErrorMsg)
+		}); ok {
+			conn.ErrorHandler = x.ErrorHandler
+		}
+		if x, ok := handler.(interface {
+			ChannelMessageHandler(context.Context, *ChannelMessageMsg)
+		}); ok {
+			conn.ChannelMessageHandler = x.ChannelMessageHandler
+		}
+		if x, ok := handler.(interface {
+			ChannelPresenceEventHandler(context.Context, *ChannelPresenceEventMsg)
+		}); ok {
+			conn.ChannelPresenceEventHandler = x.ChannelPresenceEventHandler
+		}
+		if x, ok := handler.(interface {
+			MatchDataHandler(context.Context, *MatchDataMsg)
+		}); ok {
+			conn.MatchDataHandler = x.MatchDataHandler
+		}
+		if x, ok := handler.(interface {
+			MatchPresenceEventHandler(context.Context, *MatchPresenceEventMsg)
+		}); ok {
+			conn.MatchPresenceEventHandler = x.MatchPresenceEventHandler
+		}
+		if x, ok := handler.(interface {
+			MatchmakerMatchedHandler(context.Context, *MatchmakerMatchedMsg)
+		}); ok {
+			conn.MatchmakerMatchedHandler = x.MatchmakerMatchedHandler
+		}
+		if x, ok := handler.(interface {
+			NotificationsHandler(context.Context, *NotificationsMsg)
+		}); ok {
+			conn.NotificationsHandler = x.NotificationsHandler
+		}
+		if x, ok := handler.(interface {
+			StatusPresenceEventHandler(context.Context, *StatusPresenceEventMsg)
+		}); ok {
+			conn.StatusPresenceEventHandler = x.StatusPresenceEventHandler
+		}
+		if x, ok := handler.(interface {
+			StreamDataHandler(context.Context, *StreamDataMsg)
+		}); ok {
+			conn.StreamDataHandler = x.StreamDataHandler
+		}
+		if x, ok := handler.(interface {
+			StreamPresenceEventHandler(context.Context, *StreamPresenceEventMsg)
+		}); ok {
+			conn.StreamPresenceEventHandler = x.StreamPresenceEventHandler
+		}
 	}
 }

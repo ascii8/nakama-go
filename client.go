@@ -375,7 +375,7 @@ func (cl *Client) SessionRefreshExpired() bool {
 // NewConn creates a new a nakama realtime websocket connection, and runs until
 // the context is closed.
 func (cl *Client) NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
-	return NewConn(ctx, append([]ConnOption{WithConnHandler(cl)}, opts...)...)
+	return NewConn(ctx, append([]ConnOption{WithConnClientHandler(cl)}, opts...)...)
 }
 
 // Account retrieves the user's account.
