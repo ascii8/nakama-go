@@ -119,7 +119,7 @@ func TestPing(t *testing.T) {
 func TestMatch(t *testing.T) {
 	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
-	cl1 := newClient(ctx, t, nk, WithServerKey(nk.ServerKey()))
+	cl1 := newClient(ctx, t, nk)
 	conn1 := createAccountAndConn(ctx, t, cl1)
 	defer conn1.Close()
 	a1, err := cl1.Account(ctx)
@@ -148,7 +148,7 @@ func TestMatch(t *testing.T) {
 	for _, p := range m1.Presences {
 		t.Logf("p %s: %v", p.UserId, p.Status)
 	}
-	cl2 := newClient(ctx, t, nk, WithServerKey(nk.ServerKey()))
+	cl2 := newClient(ctx, t, nk)
 	conn2 := createAccountAndConn(ctx, t, cl2)
 	defer conn2.Close()
 	dataCh := make(chan *MatchDataMsg, 1)
@@ -209,7 +209,7 @@ func TestRpcRealtime(t *testing.T) {
 func TestChannels(t *testing.T) {
 	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
-	cl := newClient(ctx, t, nk, WithServerKey(nk.ServerKey()))
+	cl := newClient(ctx, t, nk)
 	conn := createAccountAndConn(ctx, t, cl)
 	defer conn.Close()
 }
