@@ -124,21 +124,22 @@ func (cl *Client) BuildRequest(ctx context.Context, method, typ string, query ur
 	if len(query) != 0 {
 		urlstr += "?" + query.Encode()
 	}
-	u, err := url.Parse(urlstr)
-	switch {
-	case err != nil:
-		return nil, err
-	case cl.serverKey != "" && (strings.Contains(typ, "authenticate") || strings.Contains(typ, "refresh")):
-		u.User = url.UserPassword(cl.serverKey, "")
-	case cl.username != "":
-		u.User = url.UserPassword(cl.username, cl.password)
-	}
 	// create request
-	req, err := http.NewRequestWithContext(ctx, method, u.String(), body)
+	req, err := http.NewRequestWithContext(ctx, method, urlstr, body)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Add("Accept", "application/json")
+	var auth *url.Userinfo
+	switch {
+	case cl.serverKey != "" && (strings.Contains(typ, "authenticate") || strings.Contains(typ, "refresh")):
+		auth = url.UserPassword(cl.serverKey, "")
+	case cl.username != "":
+		auth = url.UserPassword(cl.username, cl.password)
+	}
+	if auth != nil {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(auth.String())))
+	}
 	if body != nil {
 		req.Header.Add("Content-Type", "application/json")
 	}
