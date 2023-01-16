@@ -1,7 +1,10 @@
 // Package nakama is a nakama http and realtime websocket client.
 package nakama
 
-//go:generate protoc -I. --go_out=. --go_opt=paths=source_relative nakama.proto realtime.proto
+//go:generate mv realtime.proto nkrealtime.proto
+//go:generate protoc -I. --go_out=. --go_opt=paths=source_relative nakama.proto nkrealtime.proto
+//go:generate mv nkrealtime.proto realtime.proto
+//go:generate mv nkrealtime.pb.go realtime.pb.go
 
 import (
 	"bytes"
