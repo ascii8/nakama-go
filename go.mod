@@ -5,7 +5,6 @@ go 1.19
 require (
 	github.com/ascii8/nktest v0.9.3
 	github.com/google/uuid v1.3.0
-	golang.org/x/exp v0.0.0-20230113213754-f9f960f08ad4
 	golang.org/x/net v0.5.0
 	google.golang.org/protobuf v1.28.1
 	nhooyr.io/websocket v1.8.7
@@ -55,6 +54,7 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/heroiclabs/nakama-common v1.26.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect

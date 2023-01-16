@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	testpb "github.com/ascii8/nakama-go/testdata/proto"
+	testpb "github.com/ascii8/nakama-go/nkapitest/proto"
 	"github.com/heroiclabs/nakama-common/runtime"
 	"google.golang.org/protobuf/encoding/protojson"
 )

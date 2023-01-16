@@ -7,13 +7,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 
-	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
@@ -234,7 +232,7 @@ func (conn *Conn) recvNotify(ctx context.Context, env *Envelope) error {
 		if conn.ErrorHandler != nil {
 			go conn.ErrorHandler(ctx, v.Error)
 		}
-		return NewRealtimeError(v.Error)
+		return v.Error
 	case *Envelope_ChannelMessage:
 		if conn.ChannelMessageHandler != nil {
 			go conn.ChannelMessageHandler(ctx, v.ChannelMessage)
@@ -284,7 +282,7 @@ func (conn *Conn) recvNotify(ctx context.Context, env *Envelope) error {
 	return fmt.Errorf("unknown type %T", env.Message)
 }
 
-// recvResponse dispatches a received a response (messages with cid != "").
+// recvResponse dispatches a received response (messages with cid != "").
 func (conn *Conn) recvResponse(env *Envelope) error {
 	conn.rw.RLock()
 	req, ok := conn.l[env.Cid]
@@ -301,8 +299,8 @@ func (conn *Conn) recvResponse(env *Envelope) error {
 	}()
 	// check error
 	if v, ok := env.Message.(*Envelope_Error); ok {
-		conn.h.Errf("error: %+v", v.Error)
-		req.err <- NewRealtimeError(v.Error)
+		conn.h.Errf("received realtime error: %v", v.Error)
+		req.err <- v.Error
 		return nil
 	}
 	// ignore response for RPC
@@ -655,38 +653,6 @@ type req struct {
 	msg EnvelopeBuilder
 	v   EnvelopeBuilder
 	err chan error
-}
-
-// RealtimeError wraps a nakama realtime websocket error.
-type RealtimeError struct {
-	Code    ErrorCode
-	Message string
-	Context map[string]string
-}
-
-// NewRealtimeError creates a nakama realtime websocket error from an error
-// message.
-func NewRealtimeError(err *ErrorMsg) error {
-	return &RealtimeError{
-		Code:    err.Code,
-		Message: err.Message,
-		Context: err.Context,
-	}
-}
-
-// Error satisfies the error interface.
-func (err *RealtimeError) Error() string {
-	var s []string
-	keys := maps.Keys(err.Context)
-	sort.Strings(keys)
-	for _, k := range keys {
-		s = append(s, k+":"+err.Context[k])
-	}
-	var extra string
-	if len(s) != 0 {
-		extra = " <" + strings.Join(s, " ") + ">"
-	}
-	return fmt.Sprintf("realtime socket error %s (%d): %s%s", err.Code, err.Code, err.Message, extra)
 }
 
 // ConnOption is a nakama realtime websocket connection option.

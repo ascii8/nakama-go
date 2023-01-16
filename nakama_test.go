@@ -8,7 +8,6 @@ import (
 
 	"github.com/ascii8/nktest"
 	"github.com/google/uuid"
-	"golang.org/x/exp/slices"
 )
 
 // TestMain handles setting up and tearing down the postgres and nakama
@@ -18,7 +17,7 @@ func TestMain(m *testing.M) {
 	ctx = nktest.WithAlwaysPullFromEnv(ctx, "PULL")
 	ctx = nktest.WithHostPortMap(ctx)
 	nktest.Main(ctx, m,
-		nktest.WithDir("./testdata"),
+		nktest.WithDir("."),
 		nktest.WithBuildConfig("./nkapitest", nktest.WithDefaultGoEnv(), nktest.WithDefaultGoVolumes()),
 	)
 }
@@ -249,10 +248,14 @@ func createAccount(ctx context.Context, t *testing.T, cl *Client) {
 	if len(res.Devices) == 0 {
 		t.Fatalf("expected there to be at least one device")
 	}
-	i := slices.IndexFunc(res.Devices, func(d *AccountDevice) bool {
-		return d.Id == deviceId
-	})
-	if i == -1 {
+	found := false
+	for _, d := range res.Devices {
+		if d.Id == deviceId {
+			found = true
+			break
+		}
+	}
+	if !found {
 		t.Fatalf("expected accountRes.Devices to contain %s", deviceId)
 	}
 }

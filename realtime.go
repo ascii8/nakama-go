@@ -2,6 +2,9 @@ package nakama
 
 import (
 	"context"
+	"fmt"
+	"sort"
+	"strings"
 
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -249,6 +252,24 @@ func (msg *MatchMsg) BuildEnvelope() *Envelope {
 			Match: msg,
 		},
 	}
+}
+
+// Error satisfies the error interface.
+func (err *ErrorMsg) Error() string {
+	var keys []string
+	for key := range err.Context {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var s []string
+	for _, k := range keys {
+		s = append(s, k+":"+err.Context[k])
+	}
+	var extra string
+	if len(s) != 0 {
+		extra = " <" + strings.Join(s, " ") + ">"
+	}
+	return fmt.Sprintf("realtime socket error %s (%d): %s%s", err.Code, err.Code, err.Message, extra)
 }
 
 // MatchCreate creates a realtime message to create a multiplayer match.

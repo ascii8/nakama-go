@@ -13,7 +13,7 @@ func Example() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// create client
-	cl := nakama.New(nakama.WithServerKey("testdata_server"))
+	cl := nakama.New(nakama.WithServerKey("nakama-go_server"))
 	// authenticate
 	if err := cl.AuthenticateDevice(ctx, id, true, ""); err != nil {
 		log.Fatal(err)
@@ -39,12 +39,12 @@ func ExampleRpc() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// create client
-	cl := nakama.New(nakama.WithServerKey("testdata_server"))
+	cl := nakama.New(nakama.WithServerKey("nakama-go_server"))
 	// create request and response
 	res := new(rewards)
 	req := nakama.Rpc("dailyRewards", rewards{Rewards: amount}, res)
 	// execute rpc with http key
-	if err := req.WithHttpKey("testdata").Do(ctx, cl); err != nil {
+	if err := req.WithHttpKey("nakama-go").Do(ctx, cl); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("rewards:", res.Rewards)
