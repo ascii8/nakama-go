@@ -32,7 +32,9 @@ func (req *HealthcheckRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *HealthcheckRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -53,7 +55,9 @@ func (req *AccountRequest) Do(ctx context.Context, cl *Client) (*AccountResponse
 // Async executes the request against the context and client.
 func (req *AccountRequest) Async(ctx context.Context, cl *Client, f func(*AccountResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -106,7 +110,9 @@ func (req *UpdateAccountRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *UpdateAccountRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -157,7 +163,9 @@ func (req *AuthenticateAppleRequest) Do(ctx context.Context, cl *Client) (*Sessi
 // Async executes the request against the context and client.
 func (req *AuthenticateAppleRequest) Async(ctx context.Context, cl *Client, f func(*SessionResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -208,7 +216,9 @@ func (req *AuthenticateCustomRequest) Do(ctx context.Context, cl *Client) (*Sess
 // Async executes the request against the context and client.
 func (req *AuthenticateCustomRequest) Async(ctx context.Context, cl *Client, f func(*SessionResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -259,7 +269,9 @@ func (req *AuthenticateDeviceRequest) Do(ctx context.Context, cl *Client) (*Sess
 // Async executes the request against the context and client.
 func (req *AuthenticateDeviceRequest) Async(ctx context.Context, cl *Client, f func(*SessionResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -311,7 +323,9 @@ func (req *AuthenticateEmailRequest) Do(ctx context.Context, cl *Client) (*Sessi
 // Async executes the request against the context and client.
 func (req *AuthenticateEmailRequest) Async(ctx context.Context, cl *Client, f func(*SessionResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -371,7 +385,9 @@ func (req *AuthenticateFacebookRequest) Do(ctx context.Context, cl *Client) (*Se
 // Async executes the request against the context and client.
 func (req *AuthenticateFacebookRequest) Async(ctx context.Context, cl *Client, f func(*SessionResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -422,7 +438,9 @@ func (req *AuthenticateFacebookInstantGameRequest) Do(ctx context.Context, cl *C
 // Async executes the request against the context and client.
 func (req *AuthenticateFacebookInstantGameRequest) Async(ctx context.Context, cl *Client, f func(*SessionResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -507,7 +525,9 @@ func (req *AuthenticateGameCenterRequest) Do(ctx context.Context, cl *Client) (*
 // Async executes the request against the context and client.
 func (req *AuthenticateGameCenterRequest) Async(ctx context.Context, cl *Client, f func(*SessionResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -558,7 +578,9 @@ func (req *AuthenticateGoogleRequest) Do(ctx context.Context, cl *Client) (*Sess
 // Async executes the request against the context and client.
 func (req *AuthenticateGoogleRequest) Async(ctx context.Context, cl *Client, f func(*SessionResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -618,7 +640,9 @@ func (req *AuthenticateSteamRequest) Do(ctx context.Context, cl *Client) (*Sessi
 // Async executes the request against the context and client.
 func (req *AuthenticateSteamRequest) Async(ctx context.Context, cl *Client, f func(*SessionResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -656,7 +680,9 @@ func (req *LinkAppleRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *LinkAppleRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -688,7 +714,9 @@ func (req *LinkCustomRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *LinkCustomRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -720,7 +748,9 @@ func (req *LinkDeviceRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *LinkDeviceRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -753,7 +783,9 @@ func (req *LinkEmailRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *LinkEmailRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -791,7 +823,9 @@ func (req *LinkFacebookRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *LinkFacebookRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -825,7 +859,9 @@ func (req *LinkFacebookInstantGameRequest) Do(ctx context.Context, cl *Client) e
 // Async executes the request against the context and client.
 func (req *LinkFacebookInstantGameRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -891,7 +927,9 @@ func (req *LinkGameCenterRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *LinkGameCenterRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -923,7 +961,9 @@ func (req *LinkGoogleRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *LinkGoogleRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -960,7 +1000,9 @@ func (req *LinkSteamRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *LinkSteamRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -989,7 +1031,9 @@ func (req *SessionRefreshRequest) Do(ctx context.Context, cl *Client) (*SessionR
 // Async executes the request against the context and client.
 func (req *SessionRefreshRequest) Async(ctx context.Context, cl *Client, f func(*SessionResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -1021,7 +1065,9 @@ func (req *UnlinkAppleRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *UnlinkAppleRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1053,7 +1099,9 @@ func (req *UnlinkCustomRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *UnlinkCustomRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1085,7 +1133,9 @@ func (req *UnlinkDeviceRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *UnlinkDeviceRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1118,7 +1168,9 @@ func (req *UnlinkEmailRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *UnlinkEmailRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1150,7 +1202,9 @@ func (req *UnlinkFacebookRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *UnlinkFacebookRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1184,7 +1238,9 @@ func (req *UnlinkFacebookInstantGameRequest) Do(ctx context.Context, cl *Client)
 // Async executes the request against the context and client.
 func (req *UnlinkFacebookInstantGameRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1250,7 +1306,9 @@ func (req *UnlinkGameCenterRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *UnlinkGameCenterRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1282,7 +1340,9 @@ func (req *UnlinkGoogleRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *UnlinkGoogleRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1314,7 +1374,9 @@ func (req *UnlinkSteamRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *UnlinkSteamRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1366,7 +1428,9 @@ func (req *ChannelMessagesRequest) Do(ctx context.Context, cl *Client) (*Channel
 // Async executes the request against the context and client.
 func (req *ChannelMessagesRequest) Async(ctx context.Context, cl *Client, f func(*ChannelMessagesResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -1403,7 +1467,9 @@ func (req *EventRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *EventRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1454,7 +1520,9 @@ func (req *FriendsRequest) Do(ctx context.Context, cl *Client) (*FriendsResponse
 // Async executes the request against the context and client.
 func (req *FriendsRequest) Async(ctx context.Context, cl *Client, f func(*FriendsResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -1479,7 +1547,9 @@ func (req *DeleteFriendsRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *DeleteFriendsRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1504,7 +1574,9 @@ func (req *AddFriendsRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *AddFriendsRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1529,7 +1601,9 @@ func (req *BlockFriendsRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *BlockFriendsRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1566,7 +1640,9 @@ func (req *ImportFacebookFriendsRequest) Do(ctx context.Context, cl *Client) err
 // Async executes the request against the context and client.
 func (req *ImportFacebookFriendsRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1603,7 +1679,9 @@ func (req *ImportSteamFriendsRequest) Do(ctx context.Context, cl *Client) error 
 // Async executes the request against the context and client.
 func (req *ImportSteamFriendsRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1679,7 +1757,9 @@ func (req *GroupsRequest) Do(ctx context.Context, cl *Client) (*GroupsResponse, 
 // Async executes the request against the context and client.
 func (req *GroupsRequest) Async(ctx context.Context, cl *Client, f func(*GroupsResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -1736,7 +1816,9 @@ func (req *CreateGroupRequest) Do(ctx context.Context, cl *Client) (*Group, erro
 // Async executes the request against the context and client.
 func (req *CreateGroupRequest) Async(ctx context.Context, cl *Client, f func(*CreateGroupResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -1758,7 +1840,9 @@ func (req *DeleteGroupRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *DeleteGroupRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1807,7 +1891,9 @@ func (req *UpdateGroupRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *UpdateGroupRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1828,7 +1914,9 @@ func (req *AddGroupUsersRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *AddGroupUsersRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1848,7 +1936,9 @@ func (req *BanGroupUsersRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *BanGroupUsersRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1868,7 +1958,9 @@ func (req *DemoteGroupUsersRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *DemoteGroupUsersRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1887,7 +1979,9 @@ func (req *JoinGroupRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *JoinGroupRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1908,7 +2002,9 @@ func (req *KickGroupUsersRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *KickGroupUsersRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1927,7 +2023,9 @@ func (req *LeaveGroupRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *LeaveGroupRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1948,7 +2046,9 @@ func (req *PromoteGroupUsersRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *PromoteGroupUsersRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -2000,7 +2100,9 @@ func (req *GroupUsersRequest) Do(ctx context.Context, cl *Client) (*GroupUsersRe
 // Async executes the request against the context and client.
 func (req *GroupUsersRequest) Async(ctx context.Context, cl *Client, f func(*GroupUsersResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2029,7 +2131,9 @@ func (req *ValidatePurchaseAppleRequest) Do(ctx context.Context, cl *Client) (*V
 // Async executes the request against the context and client.
 func (req *ValidatePurchaseAppleRequest) Async(ctx context.Context, cl *Client, f func(*ValidatePurchaseResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2058,7 +2162,9 @@ func (req *ValidatePurchaseGoogleRequest) Do(ctx context.Context, cl *Client) (*
 // Async executes the request against the context and client.
 func (req *ValidatePurchaseGoogleRequest) Async(ctx context.Context, cl *Client, f func(*ValidatePurchaseResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2088,7 +2194,9 @@ func (req *ValidatePurchaseHuaweiRequest) Do(ctx context.Context, cl *Client) (*
 // Async executes the request against the context and client.
 func (req *ValidatePurchaseHuaweiRequest) Async(ctx context.Context, cl *Client, f func(*ValidatePurchaseResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2130,7 +2238,9 @@ func (req *SubscriptionsRequest) Do(ctx context.Context, cl *Client) (*Subscript
 // Async executes the request against the context and client.
 func (req *SubscriptionsRequest) Async(ctx context.Context, cl *Client, f func(*SubscriptionsResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2159,7 +2269,9 @@ func (req *ValidateSubscriptionAppleRequest) Do(ctx context.Context, cl *Client)
 // Async executes the request against the context and client.
 func (req *ValidateSubscriptionAppleRequest) Async(ctx context.Context, cl *Client, f func(*ValidateSubscriptionResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2188,7 +2300,9 @@ func (req *ValidateSubscriptionGoogleRequest) Do(ctx context.Context, cl *Client
 // Async executes the request against the context and client.
 func (req *ValidateSubscriptionGoogleRequest) Async(ctx context.Context, cl *Client, f func(*ValidateSubscriptionResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2210,7 +2324,9 @@ func (req *SubscriptionRequest) Do(ctx context.Context, cl *Client) (*Subscripti
 // Async executes the request against the context and client.
 func (req *SubscriptionRequest) Async(ctx context.Context, cl *Client, f func(*SubscriptionResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2274,7 +2390,9 @@ func (req *LeaderboardRecordsRequest) Do(ctx context.Context, cl *Client) (*Lead
 // Async executes the request against the context and client.
 func (req *LeaderboardRecordsRequest) Async(ctx context.Context, cl *Client, f func(*LeaderboardRecordsResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2293,7 +2411,9 @@ func (req *DeleteLeaderboardRecordRequest) Do(ctx context.Context, cl *Client) e
 // Async executes the request against the context and client.
 func (req *DeleteLeaderboardRecordRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -2341,7 +2461,9 @@ func (req *WriteLeaderboardRecordRequest) Do(ctx context.Context, cl *Client) (*
 // Async executes the request against the context and client.
 func (req *WriteLeaderboardRecordRequest) Async(ctx context.Context, cl *Client, f func(*WriteLeaderboardRecordResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2389,7 +2511,9 @@ func (req *LeaderboardRecordsAroundOwnerRequest) Do(ctx context.Context, cl *Cli
 // Async executes the request against the context and client.
 func (req *LeaderboardRecordsAroundOwnerRequest) Async(ctx context.Context, cl *Client, f func(*LeaderboardRecordsResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2467,7 +2591,9 @@ func (req *MatchesRequest) Do(ctx context.Context, cl *Client) (*MatchesResponse
 // Async executes the request against the context and client.
 func (req *MatchesRequest) Async(ctx context.Context, cl *Client, f func(*MatchesResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2509,7 +2635,9 @@ func (req *NotificationsRequest) Do(ctx context.Context, cl *Client) (*Notificat
 // Async executes the request against the context and client.
 func (req *NotificationsRequest) Async(ctx context.Context, cl *Client, f func(*NotificationsResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2528,7 +2656,9 @@ func (req *DeleteNotificationsRequest) Do(ctx context.Context, cl *Client) error
 // Async executes the request against the context and client.
 func (req *DeleteNotificationsRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -2589,7 +2719,9 @@ func (req *RpcRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *RpcRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -2677,7 +2809,9 @@ func (req *SessionLogoutRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *SessionLogoutRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -2708,7 +2842,9 @@ func (req *ReadStorageObjectsRequest) Do(ctx context.Context, cl *Client) (*Read
 // Async executes the request against the context and client.
 func (req *ReadStorageObjectsRequest) Async(ctx context.Context, cl *Client, f func(*ReadStorageObjectsResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2735,7 +2871,9 @@ func (req *WriteStorageObjectsRequest) Do(ctx context.Context, cl *Client) (*Wri
 // Async executes the request against the context and client.
 func (req *WriteStorageObjectsRequest) Async(ctx context.Context, cl *Client, f func(*WriteStorageObjectsResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2762,7 +2900,9 @@ func (req *DeleteStorageObjectsRequest) Do(ctx context.Context, cl *Client) erro
 // Async executes the request against the context and client.
 func (req *DeleteStorageObjectsRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -2814,7 +2954,9 @@ func (req *StorageObjectsRequest) Do(ctx context.Context, cl *Client) (*StorageO
 // Async executes the request against the context and client.
 func (req *StorageObjectsRequest) Async(ctx context.Context, cl *Client, f func(*StorageObjectsResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2892,7 +3034,9 @@ func (req *TournamentsRequest) Do(ctx context.Context, cl *Client) (*Tournaments
 // Async executes the request against the context and client.
 func (req *TournamentsRequest) Async(ctx context.Context, cl *Client, f func(*TournamentsResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -2953,7 +3097,9 @@ func (req *TournamentRecordsRequest) Do(ctx context.Context, cl *Client) (*Tourn
 // Async executes the request against the context and client.
 func (req *TournamentRecordsRequest) Async(ctx context.Context, cl *Client, f func(*TournamentRecordsResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -3001,7 +3147,9 @@ func (req *WriteTournamentRecordRequest) Do(ctx context.Context, cl *Client) (*W
 // Async executes the request against the context and client.
 func (req *WriteTournamentRecordRequest) Async(ctx context.Context, cl *Client, f func(*WriteTournamentRecordResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -3023,7 +3171,9 @@ func (req *JoinTournamentRequest) Do(ctx context.Context, cl *Client) error {
 // Async executes the request against the context and client.
 func (req *JoinTournamentRequest) Async(ctx context.Context, cl *Client, f func(error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -3068,7 +3218,9 @@ func (req *TournamentRecordsAroundOwnerRequest) Do(ctx context.Context, cl *Clie
 // Async executes the request against the context and client.
 func (req *TournamentRecordsAroundOwnerRequest) Async(ctx context.Context, cl *Client, f func(*TournamentRecordsResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -3113,7 +3265,9 @@ func (req *UsersRequest) Do(ctx context.Context, cl *Client) (*UsersResponse, er
 // Async executes the request against the context and client.
 func (req *UsersRequest) Async(ctx context.Context, cl *Client, f func(*UsersResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -3164,6 +3318,8 @@ func (req *UserGroupsRequest) Do(ctx context.Context, cl *Client) (*UserGroupsRe
 // Async executes the request against the context and client.
 func (req *UserGroupsRequest) Async(ctx context.Context, cl *Client, f func(*UserGroupsResponse, error)) {
 	go func() {
-		f(req.Do(ctx, cl))
+		if res, err := req.Do(ctx, cl); f != nil {
+			f(res, err)
+		}
 	}()
 }

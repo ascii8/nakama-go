@@ -61,7 +61,9 @@ func (msg *ChannelJoinMsg) Send(ctx context.Context, conn *Conn) (*ChannelMsg, e
 // Async sends the message to the connection.
 func (msg *ChannelJoinMsg) Async(ctx context.Context, conn *Conn, f func(*ChannelMsg, error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if res, err := msg.Send(ctx, conn); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -89,7 +91,9 @@ func (msg *ChannelLeaveMsg) Send(ctx context.Context, conn *Conn) error {
 // Async sends the message to the connection.
 func (msg *ChannelLeaveMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -143,7 +147,9 @@ func (msg *ChannelMessageRemoveMsg) Send(ctx context.Context, conn *Conn) (*Chan
 // Async sends the message to the connection.
 func (msg *ChannelMessageRemoveMsg) Async(ctx context.Context, conn *Conn, f func(*ChannelMessageAckMsg, error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if res, err := msg.Send(ctx, conn); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -176,7 +182,9 @@ func (msg *ChannelMessageSendMsg) Send(ctx context.Context, conn *Conn) (*Channe
 // Async sends the message to the connection.
 func (msg *ChannelMessageSendMsg) Async(ctx context.Context, conn *Conn, f func(*ChannelMessageAckMsg, error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if res, err := msg.Send(ctx, conn); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -210,7 +218,9 @@ func (msg *ChannelMessageUpdateMsg) Send(ctx context.Context, conn *Conn) (*Chan
 // Async sends the message to the connection.
 func (msg *ChannelMessageUpdateMsg) Async(ctx context.Context, conn *Conn, f func(*ChannelMessageAckMsg, error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if res, err := msg.Send(ctx, conn); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -269,7 +279,9 @@ func (msg *MatchCreateMsg) Send(ctx context.Context, conn *Conn) (*MatchMsg, err
 // Async sends the message to the connection.
 func (msg *MatchCreateMsg) Async(ctx context.Context, conn *Conn, f func(*MatchMsg, error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if res, err := msg.Send(ctx, conn); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -320,7 +332,9 @@ func (msg *MatchDataSendMsg) Send(ctx context.Context, conn *Conn) error {
 // Async sends the message to the connection.
 func (msg *MatchDataSendMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -369,7 +383,9 @@ func (msg *MatchJoinMsg) Send(ctx context.Context, conn *Conn) (*MatchMsg, error
 // Async sends the message to the connection.
 func (msg *MatchJoinMsg) Async(ctx context.Context, conn *Conn, f func(*MatchMsg, error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if res, err := msg.Send(ctx, conn); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -397,7 +413,9 @@ func (msg *MatchLeaveMsg) Send(ctx context.Context, conn *Conn) error {
 // Async sends the message to the connection.
 func (msg *MatchLeaveMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -458,7 +476,9 @@ func (msg *MatchmakerAddMsg) Send(ctx context.Context, conn *Conn) (*MatchmakerT
 // Async sends the message to the connection.
 func (msg *MatchmakerAddMsg) Async(ctx context.Context, conn *Conn, f func(*MatchmakerTicketMsg, error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if res, err := msg.Send(ctx, conn); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -495,7 +515,9 @@ func (msg *MatchmakerRemoveMsg) Send(ctx context.Context, conn *Conn) error {
 // Async sends the message to the connection.
 func (msg *MatchmakerRemoveMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -551,7 +573,9 @@ func (msg *PartyAcceptMsg) Send(ctx context.Context, conn *Conn) error {
 // Async sends the message to the connection.
 func (msg *PartyAcceptMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -579,7 +603,9 @@ func (msg *PartyCloseMsg) Send(ctx context.Context, conn *Conn) error {
 // Async sends the message to the connection.
 func (msg *PartyCloseMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -612,7 +638,9 @@ func (msg *PartyCreateMsg) Send(ctx context.Context, conn *Conn) (*PartyMsg, err
 // Async sends the message to the connection.
 func (msg *PartyCreateMsg) Async(ctx context.Context, conn *Conn, f func(*PartyMsg, error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if res, err := msg.Send(ctx, conn); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -642,7 +670,9 @@ func (msg *PartyDataSendMsg) Send(ctx context.Context, conn *Conn) error {
 // Async sends the message to the connection.
 func (msg *PartyDataSendMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -670,7 +700,9 @@ func (msg *PartyJoinMsg) Send(ctx context.Context, conn *Conn) error {
 // Async sends the message to the connection.
 func (msg *PartyJoinMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -702,7 +734,9 @@ func (msg *PartyJoinRequestsMsg) Send(ctx context.Context, conn *Conn) (*PartyJo
 // Async sends the message to the connection.
 func (msg *PartyJoinRequestsMsg) Async(ctx context.Context, conn *Conn, f func(*PartyJoinRequestMsg, error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if res, err := msg.Send(ctx, conn); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -748,7 +782,9 @@ func (msg *PartyLeaveMsg) Send(ctx context.Context, conn *Conn) error {
 // Async sends the message to the connection.
 func (msg *PartyLeaveMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -801,7 +837,9 @@ func (msg *PartyMatchmakerAddMsg) Send(ctx context.Context, conn *Conn) (*PartyM
 // Async sends the message to the connection.
 func (msg *PartyMatchmakerAddMsg) Async(ctx context.Context, conn *Conn, f func(*PartyMatchmakerTicketMsg, error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if res, err := msg.Send(ctx, conn); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -830,7 +868,9 @@ func (msg *PartyMatchmakerRemoveMsg) Send(ctx context.Context, conn *Conn) error
 // Async sends the message to the connection.
 func (msg *PartyMatchmakerRemoveMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -872,7 +912,9 @@ func (msg *PartyPromoteMsg) Send(ctx context.Context, conn *Conn) (*PartyLeaderM
 // Async sends the message to the connection.
 func (msg *PartyPromoteMsg) Async(ctx context.Context, conn *Conn, f func(*PartyLeaderMsg, error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if res, err := msg.Send(ctx, conn); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -901,7 +943,9 @@ func (msg *PartyRemoveMsg) Send(ctx context.Context, conn *Conn) error {
 // Async sends the message to the connection.
 func (msg *PartyRemoveMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -927,7 +971,9 @@ func (msg *PingMsg) Send(ctx context.Context, conn *Conn) error {
 // Async sends the message to the connection.
 func (msg *PingMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -983,7 +1029,9 @@ func (msg *StatusFollowMsg) Send(ctx context.Context, conn *Conn) (*StatusMsg, e
 // Async sends the message to the connection.
 func (msg *StatusFollowMsg) Async(ctx context.Context, conn *Conn, f func(*StatusMsg, error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if res, err := msg.Send(ctx, conn); f != nil {
+			f(res, err)
+		}
 	}()
 }
 
@@ -1020,7 +1068,9 @@ func (msg *StatusUnfollowMsg) Send(ctx context.Context, conn *Conn) error {
 // Async sends the message to the connection.
 func (msg *StatusUnfollowMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
@@ -1052,7 +1102,9 @@ func (msg *StatusUpdateMsg) Send(ctx context.Context, conn *Conn) error {
 // Async sends the message to the connection.
 func (msg *StatusUpdateMsg) Async(ctx context.Context, conn *Conn, f func(error)) {
 	go func() {
-		f(msg.Send(ctx, conn))
+		if err := msg.Send(ctx, conn); f != nil {
+			f(err)
+		}
 	}()
 }
 
