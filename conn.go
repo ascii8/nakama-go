@@ -97,9 +97,7 @@ func NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
 	}
 	// open socket
 	var err error
-	conn.conn, _, err = websocket.Dial(ctx, urlstr+"?"+query.Encode(), &websocket.DialOptions{
-		HTTPClient: httpClient,
-	})
+	conn.conn, _, err = websocket.Dial(ctx, urlstr+"?"+query.Encode(), buildWsOptions(httpClient))
 	if err != nil {
 		return nil, fmt.Errorf("unable to open nakama websocket %s: %w", urlstr, err)
 	}
