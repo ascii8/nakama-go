@@ -5,7 +5,7 @@ WASM builds.
 
 [![Tests](https://github.com/ascii8/nakama-go/workflows/Test/badge.svg)](https://github.com/ascii8/nakama-go/actions?query=workflow%3ATest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ascii8/nakama-go)](https://goreportcard.com/report/github.com/ascii8/nakama-go)
-[![Reference](https://godoc.org/github.com/ascii8/nakama-go?status.svg)](https://pkg.go.dev/github.com/ascii8/nakama-go)
+[![Reference](https://pkg.go.dev/badge/github.com/ascii8/nakama-go.svg)](https://pkg.go.dev/github.com/ascii8/nakama-go)
 [![Releases](https://img.shields.io/github/v/release/ascii8/nakama-go?display_name=tag&sort=semver)](https://github.com/ascii8/nakama-go/releases)
 
 ## Using
