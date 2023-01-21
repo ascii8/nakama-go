@@ -32,18 +32,18 @@ type ClientHandler interface {
 // register a type as a handler that is future-proofed. As used by WithConnHandler,
 // a type that supports the any of the following smuggled interfaces:
 //
-//	ErrorHandler(*nakama.ErrorMsg)
-//	ChannelMessageHandler(*nakama.ChannelMessageMsg)
-//	ChannelPresenceEventHandler(*nakama.ChannelPresenceEventMsg)
-//	MatchDataHandler(*nakama.MatchDataMsg)
-//	MatchPresenceEventHandler(*nakama.MatchPresenceEventMsg)
-//	MatchmakerMatchedHandler(*nakama.MatchmakerMatchedMsg)
-//	NotificationsHandler(*nakama.NotificationsMsg)
-//	StatusPresenceEventHandler(*nakama.StatusPresenceEventMsg)
-//	StreamDataHandler(*nakama.StreamDataMsg)
-//	StreamPresenceEventHandler(*nakama.StreamPresenceEventMsg)
-//	ConnectHandler()
-//	DisconnectHandler(error)
+//	ConnectHandler(context.Context)
+//	DisconnectHandler(context.Context, error)
+//	ErrorHandler(context.Context, *nakama.ErrorMsg)
+//	ChannelMessageHandler(context.Context, *nakama.ChannelMessageMsg)
+//	ChannelPresenceEventHandler(context.Context, *nakama.ChannelPresenceEventMsg)
+//	MatchDataHandler(context.Context, *nakama.MatchDataMsg)
+//	MatchPresenceEventHandler(context.Context, *nakama.MatchPresenceEventMsg)
+//	MatchmakerMatchedHandler(context.Context, *nakama.MatchmakerMatchedMsg)
+//	NotificationsHandler(context.Context, *nakama.NotificationsMsg)
+//	StatusPresenceEventHandler(context.Context, *nakama.StatusPresenceEventMsg)
+//	StreamDataHandler(context.Context, *nakama.StreamDataMsg)
+//	StreamPresenceEventHandler(context.Context, *nakama.StreamPresenceEventMsg)
 //
 // Will have its method added to Conn as its respective <MessageType>Handler.
 //
@@ -71,18 +71,18 @@ type Conn struct {
 	in  chan []byte
 	m   map[string]*res
 
-	ConnectHandler              func()
-	ErrorHandler                func(*ErrorMsg)
-	ChannelMessageHandler       func(*ChannelMessageMsg)
-	ChannelPresenceEventHandler func(*ChannelPresenceEventMsg)
-	MatchDataHandler            func(*MatchDataMsg)
-	MatchPresenceEventHandler   func(*MatchPresenceEventMsg)
-	MatchmakerMatchedHandler    func(*MatchmakerMatchedMsg)
-	NotificationsHandler        func(*NotificationsMsg)
-	StatusPresenceEventHandler  func(*StatusPresenceEventMsg)
-	StreamDataHandler           func(*StreamDataMsg)
-	StreamPresenceEventHandler  func(*StreamPresenceEventMsg)
-	DisconnectHandler           func(error)
+	ConnectHandler              func(context.Context)
+	DisconnectHandler           func(context.Context, error)
+	ErrorHandler                func(context.Context, *ErrorMsg)
+	ChannelMessageHandler       func(context.Context, *ChannelMessageMsg)
+	ChannelPresenceEventHandler func(context.Context, *ChannelPresenceEventMsg)
+	MatchDataHandler            func(context.Context, *MatchDataMsg)
+	MatchPresenceEventHandler   func(context.Context, *MatchPresenceEventMsg)
+	MatchmakerMatchedHandler    func(context.Context, *MatchmakerMatchedMsg)
+	NotificationsHandler        func(context.Context, *NotificationsMsg)
+	StatusPresenceEventHandler  func(context.Context, *StatusPresenceEventMsg)
+	StreamDataHandler           func(context.Context, *StreamDataMsg)
+	StreamPresenceEventHandler  func(context.Context, *StreamPresenceEventMsg)
 
 	rw sync.RWMutex
 }
@@ -160,7 +160,7 @@ func (conn *Conn) open(ctx context.Context) error {
 	conn.ctx, conn.cancel = context.WithCancel(ctx)
 	conn.ws = ws
 	if conn.ConnectHandler != nil {
-		go conn.ConnectHandler()
+		go conn.ConnectHandler(conn.ctx)
 	}
 	return nil
 }
@@ -236,14 +236,13 @@ func (conn *Conn) CloseWithErr(err error) error {
 	if conn.ws != nil {
 		defer conn.ws.Close(websocket.StatusGoingAway, "going away")
 		defer conn.cancel()
-		conn.ctx, conn.ws, conn.cancel = nil, nil, nil
 		for k := range conn.m {
 			delete(conn.m, k)
 		}
-		conn.stop = true
 		if conn.DisconnectHandler != nil {
-			go conn.DisconnectHandler(err)
+			go conn.DisconnectHandler(conn.ctx, err)
 		}
+		conn.stop, conn.ctx, conn.ws, conn.cancel = true, nil, nil, nil
 	}
 	return nil
 }
@@ -365,52 +364,52 @@ func (conn *Conn) recvNotify(ctx context.Context, env *Envelope) error {
 	switch v := env.Message.(type) {
 	case *Envelope_Error:
 		if conn.ErrorHandler != nil {
-			go conn.ErrorHandler(v.Error)
+			go conn.ErrorHandler(ctx, v.Error)
 		}
 		return v.Error
 	case *Envelope_ChannelMessage:
 		if conn.ChannelMessageHandler != nil {
-			go conn.ChannelMessageHandler(v.ChannelMessage)
+			go conn.ChannelMessageHandler(ctx, v.ChannelMessage)
 		}
 		return nil
 	case *Envelope_ChannelPresenceEvent:
 		if conn.ChannelPresenceEventHandler != nil {
-			go conn.ChannelPresenceEventHandler(v.ChannelPresenceEvent)
+			go conn.ChannelPresenceEventHandler(ctx, v.ChannelPresenceEvent)
 		}
 		return nil
 	case *Envelope_MatchData:
 		if conn.MatchDataHandler != nil {
-			go conn.MatchDataHandler(v.MatchData)
+			go conn.MatchDataHandler(ctx, v.MatchData)
 		}
 		return nil
 	case *Envelope_MatchPresenceEvent:
 		if conn.MatchPresenceEventHandler != nil {
-			go conn.MatchPresenceEventHandler(v.MatchPresenceEvent)
+			go conn.MatchPresenceEventHandler(ctx, v.MatchPresenceEvent)
 		}
 		return nil
 	case *Envelope_MatchmakerMatched:
 		if conn.MatchmakerMatchedHandler != nil {
-			go conn.MatchmakerMatchedHandler(v.MatchmakerMatched)
+			go conn.MatchmakerMatchedHandler(ctx, v.MatchmakerMatched)
 		}
 		return nil
 	case *Envelope_Notifications:
 		if conn.NotificationsHandler != nil {
-			go conn.NotificationsHandler(v.Notifications)
+			go conn.NotificationsHandler(ctx, v.Notifications)
 		}
 		return nil
 	case *Envelope_StatusPresenceEvent:
 		if conn.StatusPresenceEventHandler != nil {
-			go conn.StatusPresenceEventHandler(v.StatusPresenceEvent)
+			go conn.StatusPresenceEventHandler(ctx, v.StatusPresenceEvent)
 		}
 		return nil
 	case *Envelope_StreamData:
 		if conn.StreamDataHandler != nil {
-			go conn.StreamDataHandler(v.StreamData)
+			go conn.StreamDataHandler(ctx, v.StreamData)
 		}
 		return nil
 	case *Envelope_StreamPresenceEvent:
 		if conn.StreamPresenceEventHandler != nil {
-			go conn.StreamPresenceEventHandler(v.StreamPresenceEvent)
+			go conn.StreamPresenceEventHandler(ctx, v.StreamPresenceEvent)
 		}
 		return nil
 	}
@@ -899,8 +898,8 @@ func WithConnPersist(persist bool) ConnOption {
 //
 //	type MyClient struct{}
 //
-//	func (cl *MyClient) MatchDataHandler(*nakama.MatchDataMsg) {}
-//	func (cl *MyClient) NotificationsHandler(*nakama.NotificationsMsg) {}
+//	func (cl *MyClient) MatchDataHandler(context.Context, *nakama.MatchDataMsg) {}
+//	func (cl *MyClient) NotificationsHandler(context.Context, *nakama.NotificationsMsg) {}
 //
 // The following:
 //
@@ -922,64 +921,64 @@ func WithConnPersist(persist bool) ConnOption {
 func WithConnHandler(handler ConnHandler) ConnOption {
 	return func(conn *Conn) {
 		if x, ok := handler.(interface {
-			ErrorHandler(*ErrorMsg)
-		}); ok {
-			conn.ErrorHandler = x.ErrorHandler
-		}
-		if x, ok := handler.(interface {
-			ChannelMessageHandler(*ChannelMessageMsg)
-		}); ok {
-			conn.ChannelMessageHandler = x.ChannelMessageHandler
-		}
-		if x, ok := handler.(interface {
-			ChannelPresenceEventHandler(*ChannelPresenceEventMsg)
-		}); ok {
-			conn.ChannelPresenceEventHandler = x.ChannelPresenceEventHandler
-		}
-		if x, ok := handler.(interface {
-			MatchDataHandler(*MatchDataMsg)
-		}); ok {
-			conn.MatchDataHandler = x.MatchDataHandler
-		}
-		if x, ok := handler.(interface {
-			MatchPresenceEventHandler(*MatchPresenceEventMsg)
-		}); ok {
-			conn.MatchPresenceEventHandler = x.MatchPresenceEventHandler
-		}
-		if x, ok := handler.(interface {
-			MatchmakerMatchedHandler(*MatchmakerMatchedMsg)
-		}); ok {
-			conn.MatchmakerMatchedHandler = x.MatchmakerMatchedHandler
-		}
-		if x, ok := handler.(interface {
-			NotificationsHandler(*NotificationsMsg)
-		}); ok {
-			conn.NotificationsHandler = x.NotificationsHandler
-		}
-		if x, ok := handler.(interface {
-			StatusPresenceEventHandler(*StatusPresenceEventMsg)
-		}); ok {
-			conn.StatusPresenceEventHandler = x.StatusPresenceEventHandler
-		}
-		if x, ok := handler.(interface {
-			StreamDataHandler(*StreamDataMsg)
-		}); ok {
-			conn.StreamDataHandler = x.StreamDataHandler
-		}
-		if x, ok := handler.(interface {
-			StreamPresenceEventHandler(*StreamPresenceEventMsg)
-		}); ok {
-			conn.StreamPresenceEventHandler = x.StreamPresenceEventHandler
-		}
-		if x, ok := handler.(interface {
-			ConnectHandler()
+			ConnectHandler(context.Context)
 		}); ok {
 			conn.ConnectHandler = x.ConnectHandler
 		}
 		if x, ok := handler.(interface {
-			DisconnectHandler(error)
+			DisconnectHandler(context.Context, error)
 		}); ok {
 			conn.DisconnectHandler = x.DisconnectHandler
+		}
+		if x, ok := handler.(interface {
+			ErrorHandler(context.Context, *ErrorMsg)
+		}); ok {
+			conn.ErrorHandler = x.ErrorHandler
+		}
+		if x, ok := handler.(interface {
+			ChannelMessageHandler(context.Context, *ChannelMessageMsg)
+		}); ok {
+			conn.ChannelMessageHandler = x.ChannelMessageHandler
+		}
+		if x, ok := handler.(interface {
+			ChannelPresenceEventHandler(context.Context, *ChannelPresenceEventMsg)
+		}); ok {
+			conn.ChannelPresenceEventHandler = x.ChannelPresenceEventHandler
+		}
+		if x, ok := handler.(interface {
+			MatchDataHandler(context.Context, *MatchDataMsg)
+		}); ok {
+			conn.MatchDataHandler = x.MatchDataHandler
+		}
+		if x, ok := handler.(interface {
+			MatchPresenceEventHandler(context.Context, *MatchPresenceEventMsg)
+		}); ok {
+			conn.MatchPresenceEventHandler = x.MatchPresenceEventHandler
+		}
+		if x, ok := handler.(interface {
+			MatchmakerMatchedHandler(context.Context, *MatchmakerMatchedMsg)
+		}); ok {
+			conn.MatchmakerMatchedHandler = x.MatchmakerMatchedHandler
+		}
+		if x, ok := handler.(interface {
+			NotificationsHandler(context.Context, *NotificationsMsg)
+		}); ok {
+			conn.NotificationsHandler = x.NotificationsHandler
+		}
+		if x, ok := handler.(interface {
+			StatusPresenceEventHandler(context.Context, *StatusPresenceEventMsg)
+		}); ok {
+			conn.StatusPresenceEventHandler = x.StatusPresenceEventHandler
+		}
+		if x, ok := handler.(interface {
+			StreamDataHandler(context.Context, *StreamDataMsg)
+		}); ok {
+			conn.StreamDataHandler = x.StreamDataHandler
+		}
+		if x, ok := handler.(interface {
+			StreamPresenceEventHandler(context.Context, *StreamPresenceEventMsg)
+		}); ok {
+			conn.StreamPresenceEventHandler = x.StreamPresenceEventHandler
 		}
 	}
 }

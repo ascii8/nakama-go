@@ -134,7 +134,7 @@ func TestMatch(t *testing.T) {
 	t.Logf("account1: %+v", a1)
 	joinCh := make(chan *MatchPresenceEventMsg, 1)
 	defer close(joinCh)
-	conn1.MatchPresenceEventHandler = func(msg *MatchPresenceEventMsg) {
+	conn1.MatchPresenceEventHandler = func(_ context.Context, msg *MatchPresenceEventMsg) {
 		joinCh <- msg
 	}
 	m1, err := conn1.MatchCreate(ctx, "")
@@ -158,7 +158,7 @@ func TestMatch(t *testing.T) {
 	defer conn2.Close()
 	dataCh := make(chan *MatchDataMsg, 1)
 	defer close(dataCh)
-	conn2.MatchDataHandler = func(msg *MatchDataMsg) {
+	conn2.MatchDataHandler = func(_ context.Context, msg *MatchDataMsg) {
 		dataCh <- msg
 	}
 	m2, err := conn2.MatchJoin(ctx, m1.MatchId, nil)
@@ -241,11 +241,11 @@ func TestPersist(t *testing.T) {
 		t.Errorf("expected conn.Connected() != true")
 	}
 	connectCh := make(chan bool)
-	conn.ConnectHandler = func() {
+	conn.ConnectHandler = func(context.Context) {
 		connectCh <- true
 	}
 	disconnectCh := make(chan error)
-	conn.DisconnectHandler = func(err error) {
+	conn.DisconnectHandler = func(_ context.Context, err error) {
 		t.Logf("disconnected: %v", err)
 		disconnectCh <- err
 	}
