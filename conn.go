@@ -126,6 +126,8 @@ func (conn *Conn) Open(ctx context.Context) error {
 }
 
 // runPersist persists the websocket connection to the Nakama server.
+//
+// TODO: move constants to configurable options
 func (conn *Conn) runPersist(ctx context.Context) {
 	for !conn.stop {
 		if conn.Connected() {
@@ -263,7 +265,7 @@ func (conn *Conn) run(ctx context.Context, ch chan error) {
 	// read incoming
 	go func() {
 		for {
-			buf, err := conn.read(ctx)
+			buf, err := conn.read()
 			if err == nil {
 				conn.in <- buf
 			} else {
@@ -277,7 +279,7 @@ func (conn *Conn) run(ctx context.Context, ch chan error) {
 		case <-ctx.Done():
 			return
 		case m := <-conn.out:
-			id, err := conn.send(ctx, m.msg)
+			id, err := conn.send(m.msg)
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {
 					conn.h.Errf("unable to send message: %v", err)
@@ -306,7 +308,7 @@ func (conn *Conn) run(ctx context.Context, ch chan error) {
 }
 
 // read reads a message from the websocket connection.
-func (conn *Conn) read(ctx context.Context) ([]byte, error) {
+func (conn *Conn) read() ([]byte, error) {
 	ctx, ws, _ := conn.Conn()
 	if ws == nil {
 		return nil, ErrConnNotConnected
@@ -325,7 +327,7 @@ func (conn *Conn) read(ctx context.Context) ([]byte, error) {
 }
 
 // send marshals the message and writes it to the websocket connection.
-func (conn *Conn) send(ctx context.Context, msg EnvelopeBuilder) (string, error) {
+func (conn *Conn) send(msg EnvelopeBuilder) (string, error) {
 	ctx, ws, _ := conn.Conn()
 	if ws == nil {
 		return "", ErrConnNotConnected
