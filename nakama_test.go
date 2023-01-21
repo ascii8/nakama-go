@@ -96,13 +96,13 @@ func TestPing(t *testing.T) {
 	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
 	cl := newClient(ctx, t, nk, WithServerKey(nk.ServerKey()))
-	conn := createAccountAndConn(ctx, t, cl)
+	conn := createAccountAndConn(ctx, t, cl, true)
 	defer conn.Close()
 	if err := conn.Ping(ctx); err != nil {
 		t.Errorf("expected no error, got: %v", err)
 	}
-	if len(conn.l) != 0 {
-		t.Errorf("expected len(conn.l) == 0, got: %d", len(conn.l))
+	if len(conn.m) != 0 {
+		t.Errorf("expected len(conn.l) == 0, got: %d", len(conn.m))
 	}
 	errc := make(chan error, 1)
 	conn.PingAsync(ctx, func(err error) {
@@ -116,8 +116,8 @@ func TestPing(t *testing.T) {
 			t.Errorf("expected no error, got: %v", err)
 		}
 	}
-	if len(conn.l) != 0 {
-		t.Errorf("expected len(conn.l) == 0, got: %d", len(conn.l))
+	if len(conn.m) != 0 {
+		t.Errorf("expected len(conn.l) == 0, got: %d", len(conn.m))
 	}
 }
 
@@ -125,7 +125,7 @@ func TestMatch(t *testing.T) {
 	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
 	cl1 := newClient(ctx, t, nk)
-	conn1 := createAccountAndConn(ctx, t, cl1)
+	conn1 := createAccountAndConn(ctx, t, cl1, true)
 	defer conn1.Close()
 	a1, err := cl1.Account(ctx)
 	if err != nil {
@@ -134,7 +134,7 @@ func TestMatch(t *testing.T) {
 	t.Logf("account1: %+v", a1)
 	joinCh := make(chan *MatchPresenceEventMsg, 1)
 	defer close(joinCh)
-	conn1.MatchPresenceEventHandler = func(_ context.Context, msg *MatchPresenceEventMsg) {
+	conn1.MatchPresenceEventHandler = func(msg *MatchPresenceEventMsg) {
 		joinCh <- msg
 	}
 	m1, err := conn1.MatchCreate(ctx, "")
@@ -154,11 +154,11 @@ func TestMatch(t *testing.T) {
 		t.Logf("p %s: %v", p.UserId, p.Status)
 	}
 	cl2 := newClient(ctx, t, nk)
-	conn2 := createAccountAndConn(ctx, t, cl2)
+	conn2 := createAccountAndConn(ctx, t, cl2, true)
 	defer conn2.Close()
 	dataCh := make(chan *MatchDataMsg, 1)
 	defer close(dataCh)
-	conn2.MatchDataHandler = func(_ context.Context, msg *MatchDataMsg) {
+	conn2.MatchDataHandler = func(msg *MatchDataMsg) {
 		dataCh <- msg
 	}
 	m2, err := conn2.MatchJoin(ctx, m1.MatchId, nil)
@@ -215,8 +215,86 @@ func TestChannels(t *testing.T) {
 	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
 	cl := newClient(ctx, t, nk)
-	conn := createAccountAndConn(ctx, t, cl)
+	conn := createAccountAndConn(ctx, t, cl, true)
 	defer conn.Close()
+}
+
+func TestPersist(t *testing.T) {
+	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
+	defer cancel()
+	cl := newClient(ctx, t, nk)
+	conn := createAccountAndConn(ctx, t, cl, false, WithConnPersist(true))
+	<-time.After(100 * time.Millisecond)
+	if conn.stop == true {
+		t.Errorf("expected conn.stop == false")
+	}
+	if conn.Connected() != true {
+		t.Fatalf("expected conn.Connected() == true")
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatalf("expected on error, got: %v", err)
+	}
+	if conn.stop == false {
+		t.Errorf("expected conn.stop == true")
+	}
+	if conn.Connected() == true {
+		t.Errorf("expected conn.Connected() != true")
+	}
+	connectCh := make(chan bool)
+	conn.ConnectHandler = func() {
+		connectCh <- true
+	}
+	disconnectCh := make(chan error)
+	conn.DisconnectHandler = func(err error) {
+		t.Logf("disconnected: %v", err)
+		disconnectCh <- err
+	}
+	if err := conn.Open(ctx); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	<-time.After(100 * time.Millisecond)
+	if conn.stop == true {
+		t.Errorf("expected conn.stop == false")
+	}
+	if conn.Connected() != true {
+		t.Fatalf("expected conn.Connected() == true")
+	}
+	select {
+	case <-ctx.Done():
+		t.Errorf("expected no error, got: %v", ctx.Err())
+		return
+	case <-time.After(2 * time.Second):
+		t.Fatalf("expected a connect event within 2 seconds")
+	case b := <-connectCh:
+		if b == false {
+			t.Errorf("expected true")
+		}
+		t.Logf("connected: %t", b)
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if conn.stop == false {
+		t.Errorf("expected conn.stop == true")
+	}
+	if conn.Connected() == true {
+		t.Errorf("expected conn.Connected() != true")
+	}
+	select {
+	case <-ctx.Done():
+		t.Errorf("expected no error, got: %v", ctx.Err())
+		return
+	case <-time.After(2 * time.Second):
+		t.Fatalf("expected a disconnect event within 2 seconds")
+	case err := <-disconnectCh:
+		if err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+		t.Logf("disconnected!")
+	}
+	defer close(connectCh)
+	defer close(disconnectCh)
+	<-time.After(100 * time.Millisecond)
 }
 
 func newClient(ctx context.Context, t *testing.T, nk *nktest.Runner, opts ...Option) *Client {
@@ -266,11 +344,14 @@ func createAccount(ctx context.Context, t *testing.T, cl *Client) {
 	}
 }
 
-func createAccountAndConn(ctx context.Context, t *testing.T, cl *Client, opts ...ConnOption) *Conn {
+func createAccountAndConn(ctx context.Context, t *testing.T, cl *Client, check bool, opts ...ConnOption) *Conn {
 	createAccount(ctx, t, cl)
 	conn, err := cl.NewConn(ctx, append([]ConnOption{WithConnFormat("json")}, opts...)...)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
+	}
+	if check && conn.Connected() != true {
+		t.Fatalf("expected conn.Connected() == true")
 	}
 	return conn
 }

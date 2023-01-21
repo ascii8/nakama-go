@@ -11,7 +11,9 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
@@ -26,30 +28,63 @@ type ClientHandler interface {
 	Errf(string, ...interface{})
 }
 
+// ConnHandler is an empty interface that provides a clean, extensible way to
+// register a type as a handler that is future-proofed. As used by WithConnHandler,
+// a type that supports the any of the following smuggled interfaces:
+//
+//	ErrorHandler(*nakama.ErrorMsg)
+//	ChannelMessageHandler(*nakama.ChannelMessageMsg)
+//	ChannelPresenceEventHandler(*nakama.ChannelPresenceEventMsg)
+//	MatchDataHandler(*nakama.MatchDataMsg)
+//	MatchPresenceEventHandler(*nakama.MatchPresenceEventMsg)
+//	MatchmakerMatchedHandler(*nakama.MatchmakerMatchedMsg)
+//	NotificationsHandler(*nakama.NotificationsMsg)
+//	StatusPresenceEventHandler(*nakama.StatusPresenceEventMsg)
+//	StreamDataHandler(*nakama.StreamDataMsg)
+//	StreamPresenceEventHandler(*nakama.StreamPresenceEventMsg)
+//	ConnectHandler()
+//	DisconnectHandler(error)
+//
+// Will have its method added to Conn as its respective <MessageType>Handler.
+//
+// For an overview of Go interface smuggling as a concept, see:
+//
+// https://utcc.utoronto.ca/~cks/space/blog/programming/GoInterfaceSmuggling
+type ConnHandler interface{}
+
 // Conn is a nakama realtime websocket connection.
 type Conn struct {
-	h                           ClientHandler
-	url                         string
-	token                       string
-	binary                      bool
-	query                       url.Values
-	conn                        *websocket.Conn
-	cancel                      func()
-	out                         chan *req
-	in                          chan []byte
-	l                           map[string]*req
-	rw                          sync.RWMutex
-	id                          uint64
-	ErrorHandler                func(context.Context, *ErrorMsg)
-	ChannelMessageHandler       func(context.Context, *ChannelMessageMsg)
-	ChannelPresenceEventHandler func(context.Context, *ChannelPresenceEventMsg)
-	MatchDataHandler            func(context.Context, *MatchDataMsg)
-	MatchPresenceEventHandler   func(context.Context, *MatchPresenceEventMsg)
-	MatchmakerMatchedHandler    func(context.Context, *MatchmakerMatchedMsg)
-	NotificationsHandler        func(context.Context, *NotificationsMsg)
-	StatusPresenceEventHandler  func(context.Context, *StatusPresenceEventMsg)
-	StreamDataHandler           func(context.Context, *StreamDataMsg)
-	StreamPresenceEventHandler  func(context.Context, *StreamPresenceEventMsg)
+	h       ClientHandler
+	url     string
+	token   string
+	binary  bool
+	query   url.Values
+	persist bool
+
+	ctx    context.Context
+	ws     *websocket.Conn
+	cancel func()
+	stop   bool
+
+	id  uint64
+	out chan *res
+	in  chan []byte
+	m   map[string]*res
+
+	ConnectHandler              func()
+	ErrorHandler                func(*ErrorMsg)
+	ChannelMessageHandler       func(*ChannelMessageMsg)
+	ChannelPresenceEventHandler func(*ChannelPresenceEventMsg)
+	MatchDataHandler            func(*MatchDataMsg)
+	MatchPresenceEventHandler   func(*MatchPresenceEventMsg)
+	MatchmakerMatchedHandler    func(*MatchmakerMatchedMsg)
+	NotificationsHandler        func(*NotificationsMsg)
+	StatusPresenceEventHandler  func(*StatusPresenceEventMsg)
+	StreamDataHandler           func(*StreamDataMsg)
+	StreamPresenceEventHandler  func(*StreamPresenceEventMsg)
+	DisconnectHandler           func(error)
+
+	rw sync.RWMutex
 }
 
 // NewConn creates a new nakama realtime websocket connection.
@@ -57,19 +92,115 @@ func NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
 	conn := &Conn{
 		binary: true,
 		query:  url.Values{},
-		out:    make(chan *req),
+		out:    make(chan *res),
 		in:     make(chan []byte),
-		l:      make(map[string]*req),
+		m:      make(map[string]*res),
+		stop:   true,
 	}
 	for _, o := range opts {
 		o(conn)
 	}
+	// run
+	ch := make(chan error, 1)
+	go conn.run(ctx, ch)
+	if err := <-ch; err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
+// Open opens and persists (when enabled) the websocket connection to the
+// Nakama server.
+func (conn *Conn) Open(ctx context.Context) error {
+	if conn.Connected() {
+		return ErrConnAlreadyOpen
+	}
+	conn.rw.Lock()
+	conn.stop = false
+	conn.rw.Unlock()
+	if conn.persist {
+		go conn.runPersist(ctx)
+		return nil
+	}
+	return conn.open(ctx)
+}
+
+// runPersist persists the websocket connection to the Nakama server.
+func (conn *Conn) runPersist(ctx context.Context) {
+	for !conn.stop {
+		if conn.Connected() {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(80 * time.Millisecond):
+			}
+			continue
+		}
+		b := backoff.NewExponentialBackOff()
+		b.InitialInterval = 20 * time.Millisecond
+		b.MaxElapsedTime = 15 * time.Second
+		b.Multiplier = 1.2
+		err := backoff.Retry(func() error {
+			return conn.open(ctx)
+		}, backoff.WithContext(b, ctx))
+		if err != nil {
+			conn.h.Errf("%v", err)
+		}
+	}
+}
+
+// open opens the websocket connection to the Nakama server.
+func (conn *Conn) open(ctx context.Context) error {
+	ws, err := conn.Dial(ctx)
+	if err != nil {
+		return err
+	}
+	conn.rw.Lock()
+	defer conn.rw.Unlock()
+	conn.ctx, conn.cancel = context.WithCancel(ctx)
+	conn.ws = ws
+	if conn.ConnectHandler != nil {
+		go conn.ConnectHandler()
+	}
+	return nil
+}
+
+// Conn returns the websocket connection, and read/write context.
+func (conn *Conn) Conn() (context.Context, *websocket.Conn, func()) {
+	conn.rw.RLock()
+	defer conn.rw.RUnlock()
+	return conn.ctx, conn.ws, conn.cancel
+}
+
+// Connected returns true when the websocket connection is connected to the
+// Nakama server.
+func (conn *Conn) Connected() bool {
+	conn.rw.RLock()
+	defer conn.rw.RUnlock()
+	return conn.ws != nil
+}
+
+// Dial creates a new websocket connection to the server.
+func (conn *Conn) Dial(ctx context.Context) (*websocket.Conn, error) {
+	urlstr, opts, err := conn.DialParams(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create dial params: %w", err)
+	}
+	ws, _, err := websocket.Dial(ctx, urlstr, opts)
+	if err != nil {
+		return nil, fmt.Errorf("unable to connect to %s: %w", urlstr, err)
+	}
+	return ws, nil
+}
+
+// DialParams builds the parameters for Dial.
+func (conn *Conn) DialParams(ctx context.Context) (string, *websocket.DialOptions, error) {
 	// build url
 	urlstr := conn.url
 	if urlstr == "" && conn.h != nil {
 		var err error
 		if urlstr, err = conn.h.SocketURL(); err != nil {
-			return nil, err
+			return "", nil, err
 		}
 	}
 	// build token
@@ -77,7 +208,7 @@ func NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
 	if token == "" && conn.h != nil {
 		var err error
 		if token, err = conn.h.Token(ctx); err != nil {
-			return nil, err
+			return "", nil, err
 		}
 	}
 	// build query
@@ -95,16 +226,246 @@ func NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
 	if conn.h != nil {
 		httpClient = conn.h.HttpClient()
 	}
-	// open socket
-	var err error
-	conn.conn, _, err = websocket.Dial(ctx, urlstr+"?"+query.Encode(), buildWsOptions(httpClient))
-	if err != nil {
-		return nil, fmt.Errorf("unable to open nakama websocket %s: %w", urlstr, err)
+	return urlstr + "?" + query.Encode(), buildWsOptions(httpClient), nil
+}
+
+// CloseWithErr closes the websocket connection with an error.
+func (conn *Conn) CloseWithErr(err error) error {
+	conn.rw.Lock()
+	defer conn.rw.Unlock()
+	if conn.ws != nil {
+		defer conn.ws.Close(websocket.StatusGoingAway, "going away")
+		defer conn.cancel()
+		conn.ctx, conn.ws, conn.cancel = nil, nil, nil
+		for k := range conn.m {
+			delete(conn.m, k)
+		}
+		conn.stop = true
+		if conn.DisconnectHandler != nil {
+			go conn.DisconnectHandler(err)
+		}
 	}
-	// run
-	ctx, conn.cancel = context.WithCancel(ctx)
-	go conn.run(ctx)
-	return conn, nil
+	return nil
+}
+
+// Close closes the websocket connection.
+func (conn *Conn) Close() error {
+	return conn.CloseWithErr(nil)
+}
+
+// run handles incoming and outgoing websocket messages.
+func (conn *Conn) run(ctx context.Context, ch chan error) {
+	if err := conn.Open(ctx); err != nil {
+		defer close(ch)
+		ch <- err
+		return
+	}
+	close(ch)
+	// read incoming
+	go func() {
+		for {
+			buf, err := conn.read(ctx)
+			if err == nil {
+				conn.in <- buf
+			} else {
+				conn.h.Errf("unable to read message: %v", err)
+			}
+		}
+	}()
+	// dispatch outgoing/incoming
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case m := <-conn.out:
+			id, err := conn.send(ctx, m.msg)
+			if err != nil {
+				if !errors.Is(err, context.Canceled) {
+					conn.h.Errf("unable to send message: %v", err)
+				}
+				m.err <- fmt.Errorf("unable to send message: %w", err)
+				close(m.err)
+				continue
+			}
+			if m.v == nil || id == "" {
+				close(m.err)
+				continue
+			}
+			conn.rw.Lock()
+			conn.m[id] = m
+			conn.rw.Unlock()
+		case buf := <-conn.in:
+			if buf == nil {
+				continue
+			}
+			if err := conn.recv(ctx, buf); err != nil {
+				conn.h.Errf("unable to dispatch incoming message: %v", err)
+				continue
+			}
+		}
+	}
+}
+
+// read reads a message from the websocket connection.
+func (conn *Conn) read(ctx context.Context) ([]byte, error) {
+	ctx, ws, _ := conn.Conn()
+	if ws == nil {
+		return nil, ErrConnNotConnected
+	}
+	_, r, err := ws.Reader(ctx)
+	if err != nil {
+		conn.CloseWithErr(err)
+		return nil, err
+	}
+	buf, err := io.ReadAll(r)
+	if err != nil {
+		conn.CloseWithErr(err)
+		return nil, err
+	}
+	return buf, nil
+}
+
+// send marshals the message and writes it to the websocket connection.
+func (conn *Conn) send(ctx context.Context, msg EnvelopeBuilder) (string, error) {
+	ctx, ws, _ := conn.Conn()
+	if ws == nil {
+		return "", ErrConnNotConnected
+	}
+	env := msg.BuildEnvelope()
+	env.Cid = strconv.FormatUint(atomic.AddUint64(&conn.id, 1), 10)
+	buf, err := conn.marshal(env)
+	if err != nil {
+		return "", err
+	}
+	typ := websocket.MessageBinary
+	if !conn.binary {
+		typ = websocket.MessageText
+	}
+	if err := ws.Write(ctx, typ, buf); err != nil {
+		conn.CloseWithErr(err)
+		return "", err
+	}
+	return env.Cid, nil
+}
+
+// recv unmarshals buf, dispatching the message.
+func (conn *Conn) recv(ctx context.Context, buf []byte) error {
+	env, err := conn.unmarshal(buf)
+	switch {
+	case err != nil:
+		return fmt.Errorf("unable to unmarshal: %w", err)
+	case env.Cid == "":
+		return conn.recvNotify(ctx, env)
+	}
+	return conn.recvResponse(env)
+}
+
+// recvNotify dispaches events and received updates.
+func (conn *Conn) recvNotify(ctx context.Context, env *Envelope) error {
+	switch v := env.Message.(type) {
+	case *Envelope_Error:
+		if conn.ErrorHandler != nil {
+			go conn.ErrorHandler(v.Error)
+		}
+		return v.Error
+	case *Envelope_ChannelMessage:
+		if conn.ChannelMessageHandler != nil {
+			go conn.ChannelMessageHandler(v.ChannelMessage)
+		}
+		return nil
+	case *Envelope_ChannelPresenceEvent:
+		if conn.ChannelPresenceEventHandler != nil {
+			go conn.ChannelPresenceEventHandler(v.ChannelPresenceEvent)
+		}
+		return nil
+	case *Envelope_MatchData:
+		if conn.MatchDataHandler != nil {
+			go conn.MatchDataHandler(v.MatchData)
+		}
+		return nil
+	case *Envelope_MatchPresenceEvent:
+		if conn.MatchPresenceEventHandler != nil {
+			go conn.MatchPresenceEventHandler(v.MatchPresenceEvent)
+		}
+		return nil
+	case *Envelope_MatchmakerMatched:
+		if conn.MatchmakerMatchedHandler != nil {
+			go conn.MatchmakerMatchedHandler(v.MatchmakerMatched)
+		}
+		return nil
+	case *Envelope_Notifications:
+		if conn.NotificationsHandler != nil {
+			go conn.NotificationsHandler(v.Notifications)
+		}
+		return nil
+	case *Envelope_StatusPresenceEvent:
+		if conn.StatusPresenceEventHandler != nil {
+			go conn.StatusPresenceEventHandler(v.StatusPresenceEvent)
+		}
+		return nil
+	case *Envelope_StreamData:
+		if conn.StreamDataHandler != nil {
+			go conn.StreamDataHandler(v.StreamData)
+		}
+		return nil
+	case *Envelope_StreamPresenceEvent:
+		if conn.StreamPresenceEventHandler != nil {
+			go conn.StreamPresenceEventHandler(v.StreamPresenceEvent)
+		}
+		return nil
+	}
+	return fmt.Errorf("unknown type %T", env.Message)
+}
+
+// recvResponse dispatches a received response (messages with cid != "").
+func (conn *Conn) recvResponse(env *Envelope) error {
+	conn.rw.RLock()
+	m, ok := conn.m[env.Cid]
+	conn.rw.RUnlock()
+	if !ok || m == nil {
+		return fmt.Errorf("no callback id %s (%T)", env.Cid, env.Message)
+	}
+	// remove and close
+	defer func() {
+		close(m.err)
+		conn.rw.Lock()
+		delete(conn.m, env.Cid)
+		conn.rw.Unlock()
+	}()
+	// check error
+	if err, ok := env.Message.(*Envelope_Error); ok {
+		conn.h.Errf("realtime error: %v", err.Error)
+		m.err <- err.Error
+		return nil
+	}
+	// ignore response for RPC
+	if m.v == nil {
+		return nil
+	}
+	// merge
+	proto.Merge(m.v.BuildEnvelope(), env)
+	return nil
+}
+
+// Send sends a message.
+func (conn *Conn) Send(ctx context.Context, msg, v EnvelopeBuilder) error {
+	m := &res{
+		msg: msg,
+		v:   v,
+		err: make(chan error, 1),
+	}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case conn.out <- m:
+	}
+	var err error
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err = <-m.err:
+	}
+	return err
 }
 
 // marshal marshals the message. If the format set on the connection is json,
@@ -129,217 +490,6 @@ func (conn *Conn) unmarshal(buf []byte) (*Envelope, error) {
 		return nil, err
 	}
 	return env, nil
-}
-
-// run handles incoming and outgoing websocket messages.
-func (conn *Conn) run(ctx context.Context) {
-	// read incoming
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-			default:
-			}
-			_, r, err := conn.conn.Reader(ctx)
-			switch {
-			case err != nil && (errors.Is(err, context.Canceled) || errors.As(err, &websocket.CloseError{})):
-				return
-			case err != nil:
-				conn.h.Errf("reader error: %v", err)
-				continue
-			}
-			buf, err := io.ReadAll(r)
-			if err != nil {
-				conn.h.Errf("unable to read message: %v", err)
-				continue
-			}
-			conn.in <- buf
-		}
-	}()
-	// dispatch outgoing/incoming
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case m := <-conn.out:
-			if m == nil {
-				continue
-			}
-			id, err := conn.send(ctx, m.msg)
-			if err != nil {
-				if !errors.Is(err, context.Canceled) {
-					conn.h.Errf("unable to send message: %v", err)
-				}
-				m.err <- fmt.Errorf("unable to send message: %w", err)
-				close(m.err)
-				continue
-			}
-			if m.v == nil || id == "" {
-				close(m.err)
-				continue
-			}
-			conn.rw.Lock()
-			conn.l[id] = m
-			conn.rw.Unlock()
-		case buf := <-conn.in:
-			if buf == nil {
-				continue
-			}
-			if err := conn.recv(ctx, buf); err != nil {
-				conn.h.Errf("unable to dispatch incoming message: %v", err)
-				continue
-			}
-		}
-	}
-}
-
-// send marshals the message and writes it to the websocket connection.
-func (conn *Conn) send(ctx context.Context, msg EnvelopeBuilder) (string, error) {
-	env := msg.BuildEnvelope()
-	env.Cid = strconv.FormatUint(atomic.AddUint64(&conn.id, 1), 10)
-	buf, err := conn.marshal(env)
-	if err != nil {
-		return "", err
-	}
-	typ := websocket.MessageBinary
-	if !conn.binary {
-		typ = websocket.MessageText
-	}
-	if err := conn.conn.Write(ctx, typ, buf); err != nil {
-		return "", err
-	}
-	return env.Cid, nil
-}
-
-// recv unmarshals buf, dispatching the message.
-func (conn *Conn) recv(ctx context.Context, buf []byte) error {
-	env, err := conn.unmarshal(buf)
-	switch {
-	case err != nil:
-		return fmt.Errorf("unable to unmarshal: %w", err)
-	case env.Cid == "":
-		return conn.recvNotify(ctx, env)
-	}
-	return conn.recvResponse(env)
-}
-
-// recvNotify dispaches events and received updates.
-func (conn *Conn) recvNotify(ctx context.Context, env *Envelope) error {
-	switch v := env.Message.(type) {
-	case *Envelope_Error:
-		if conn.ErrorHandler != nil {
-			go conn.ErrorHandler(ctx, v.Error)
-		}
-		return v.Error
-	case *Envelope_ChannelMessage:
-		if conn.ChannelMessageHandler != nil {
-			go conn.ChannelMessageHandler(ctx, v.ChannelMessage)
-		}
-		return nil
-	case *Envelope_ChannelPresenceEvent:
-		if conn.ChannelPresenceEventHandler != nil {
-			go conn.ChannelPresenceEventHandler(ctx, v.ChannelPresenceEvent)
-		}
-		return nil
-	case *Envelope_MatchData:
-		if conn.MatchDataHandler != nil {
-			go conn.MatchDataHandler(ctx, v.MatchData)
-		}
-		return nil
-	case *Envelope_MatchPresenceEvent:
-		if conn.MatchPresenceEventHandler != nil {
-			go conn.MatchPresenceEventHandler(ctx, v.MatchPresenceEvent)
-		}
-		return nil
-	case *Envelope_MatchmakerMatched:
-		if conn.MatchmakerMatchedHandler != nil {
-			go conn.MatchmakerMatchedHandler(ctx, v.MatchmakerMatched)
-		}
-		return nil
-	case *Envelope_Notifications:
-		if conn.NotificationsHandler != nil {
-			go conn.NotificationsHandler(ctx, v.Notifications)
-		}
-		return nil
-	case *Envelope_StatusPresenceEvent:
-		if conn.StatusPresenceEventHandler != nil {
-			go conn.StatusPresenceEventHandler(ctx, v.StatusPresenceEvent)
-		}
-		return nil
-	case *Envelope_StreamData:
-		if conn.StreamDataHandler != nil {
-			go conn.StreamDataHandler(ctx, v.StreamData)
-		}
-		return nil
-	case *Envelope_StreamPresenceEvent:
-		if conn.StreamPresenceEventHandler != nil {
-			go conn.StreamPresenceEventHandler(ctx, v.StreamPresenceEvent)
-		}
-		return nil
-	}
-	return fmt.Errorf("unknown type %T", env.Message)
-}
-
-// recvResponse dispatches a received response (messages with cid != "").
-func (conn *Conn) recvResponse(env *Envelope) error {
-	conn.rw.RLock()
-	req, ok := conn.l[env.Cid]
-	conn.rw.RUnlock()
-	if !ok || req == nil {
-		return fmt.Errorf("no callback id %s (%T)", env.Cid, env.Message)
-	}
-	// remove and close
-	defer func() {
-		close(req.err)
-		conn.rw.Lock()
-		delete(conn.l, env.Cid)
-		conn.rw.Unlock()
-	}()
-	// check error
-	if v, ok := env.Message.(*Envelope_Error); ok {
-		conn.h.Errf("received realtime error: %v", v.Error)
-		req.err <- v.Error
-		return nil
-	}
-	// ignore response for RPC
-	if req.v == nil {
-		return nil
-	}
-	// merge
-	proto.Merge(req.v.BuildEnvelope(), env)
-	return nil
-}
-
-// Send sends a message.
-func (conn *Conn) Send(ctx context.Context, msg, v EnvelopeBuilder) error {
-	m := &req{
-		msg: msg,
-		v:   v,
-		err: make(chan error, 1),
-	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case conn.out <- m:
-	}
-	var err error
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case err = <-m.err:
-	}
-	return err
-}
-
-// Close closes the websocket connection.
-func (conn *Conn) Close() error {
-	if conn.cancel != nil {
-		defer conn.cancel()
-	}
-	if conn.conn != nil {
-		return conn.conn.Close(websocket.StatusGoingAway, "going away")
-	}
-	return nil
 }
 
 // ChannelJoin sends a message to join a chat channel.
@@ -646,8 +796,8 @@ func (conn *Conn) StatusUpdateAsync(ctx context.Context, status string, f func(e
 		Async(ctx, conn, f)
 }
 
-// req wraps a request and results.
-type req struct {
+// res wraps a request and results.
+type res struct {
 	msg EnvelopeBuilder
 	v   EnvelopeBuilder
 	err chan error
@@ -686,6 +836,7 @@ func WithConnFormat(format string) ConnOption {
 	return func(conn *Conn) {
 		switch s := strings.ToLower(format); s {
 		case "protobuf":
+			conn.binary = true
 		case "json":
 			conn.binary = false
 		default:
@@ -722,98 +873,128 @@ func WithConnCreateStatus(status bool) ConnOption {
 	}
 }
 
-// WithConnHandler is a nakama websocket connection option to set message
-// handlers.
+// WithConnPersist is a nakama websocket connection option to enable keeping
+// open a persistent connection to the Nakama server.
+func WithConnPersist(persist bool) ConnOption {
+	return func(conn *Conn) {
+		conn.persist = persist
+	}
+}
+
+// WithConnHandler is a nakama websocket connection option to set the
+// connection's message handlers. See the ConnHandler type for documentation on
+// supported interfaces.
 //
-// Checks, with a type cast, if the supplied handler supports:
+// WithConnHandler works by "smuggling" interfaces. That is, WithConnHandler
+// checks via a type cast when the underlying type supports methods of the
+// following format:
 //
 //	interface{
 //		<MessageType>Handler(context.Context, *<MessageType>Msg)
 //	}
 //
-// When handler supports the necessary interface, then it will be set as the Conn member's
-// <MessageType>Handler. For example, given the following type:
+// If the ConnHandler's underlying type supports the above, then the
+// ConnHandler's <MessageType>Handler method will be set as
+// Conn.<MessageType>Handler. For example, given the following:
 //
 //	type MyClient struct{}
 //
-//	func (cl *MyClient) MatchDataHandler(context.Context, *nakama.MatchDataMsg) {}
-//	func (cl *MyClient) NotificationsHandler(context.Context, *nakama.NotificationsMsg) {}
+//	func (cl *MyClient) MatchDataHandler(*nakama.MatchDataMsg) {}
+//	func (cl *MyClient) NotificationsHandler(*nakama.NotificationsMsg) {}
 //
 // The following:
 //
+//	cl := nakama.New(/* ... */)
 //	myClient := &MyClient{}
 //	conn, err := cl.NewConn(ctx, nakama.WithConnHandler(myClient))
 //
 // Is equivalent to:
 //
+//	cl := nakama.New(/* ... */)
 //	myClient := &MyClient{}
 //	conn, err := cl.NewConn(ctx)
 //	conn.MatchDataHandler = myClient.MatchDataHandler
 //	conn.NotificationsHandler = myClient.NotificationsHandler
 //
-// Supports:
+// For an overview of Go interface smuggling as a concept, see:
 //
-//	ErrorHandler(context.Context, *ErrorMsg)
-//	ChannelMessageHandler(context.Context, *ChannelMessageMsg)
-//	ChannelPresenceEventHandler(context.Context, *ChannelPresenceEventMsg)
-//	MatchDataHandler(context.Context, *MatchDataMsg)
-//	MatchPresenceEventHandler(context.Context, *MatchPresenceEventMsg)
-//	MatchmakerMatchedHandler(context.Context, *MatchmakerMatchedMsg)
-//	NotificationsHandler(context.Context, *NotificationsMsg)
-//	StatusPresenceEventHandler(context.Context, *StatusPresenceEventMsg)
-//	StreamDataHandler(context.Context, *StreamDataMsg)
-//	StreamPresenceEventHandler(context.Context, *StreamPresenceEventMsg)
-func WithConnHandler(handler interface{}) ConnOption {
+// https://utcc.utoronto.ca/~cks/space/blog/programming/GoInterfaceSmuggling
+func WithConnHandler(handler ConnHandler) ConnOption {
 	return func(conn *Conn) {
 		if x, ok := handler.(interface {
-			ErrorHandler(context.Context, *ErrorMsg)
+			ErrorHandler(*ErrorMsg)
 		}); ok {
 			conn.ErrorHandler = x.ErrorHandler
 		}
 		if x, ok := handler.(interface {
-			ChannelMessageHandler(context.Context, *ChannelMessageMsg)
+			ChannelMessageHandler(*ChannelMessageMsg)
 		}); ok {
 			conn.ChannelMessageHandler = x.ChannelMessageHandler
 		}
 		if x, ok := handler.(interface {
-			ChannelPresenceEventHandler(context.Context, *ChannelPresenceEventMsg)
+			ChannelPresenceEventHandler(*ChannelPresenceEventMsg)
 		}); ok {
 			conn.ChannelPresenceEventHandler = x.ChannelPresenceEventHandler
 		}
 		if x, ok := handler.(interface {
-			MatchDataHandler(context.Context, *MatchDataMsg)
+			MatchDataHandler(*MatchDataMsg)
 		}); ok {
 			conn.MatchDataHandler = x.MatchDataHandler
 		}
 		if x, ok := handler.(interface {
-			MatchPresenceEventHandler(context.Context, *MatchPresenceEventMsg)
+			MatchPresenceEventHandler(*MatchPresenceEventMsg)
 		}); ok {
 			conn.MatchPresenceEventHandler = x.MatchPresenceEventHandler
 		}
 		if x, ok := handler.(interface {
-			MatchmakerMatchedHandler(context.Context, *MatchmakerMatchedMsg)
+			MatchmakerMatchedHandler(*MatchmakerMatchedMsg)
 		}); ok {
 			conn.MatchmakerMatchedHandler = x.MatchmakerMatchedHandler
 		}
 		if x, ok := handler.(interface {
-			NotificationsHandler(context.Context, *NotificationsMsg)
+			NotificationsHandler(*NotificationsMsg)
 		}); ok {
 			conn.NotificationsHandler = x.NotificationsHandler
 		}
 		if x, ok := handler.(interface {
-			StatusPresenceEventHandler(context.Context, *StatusPresenceEventMsg)
+			StatusPresenceEventHandler(*StatusPresenceEventMsg)
 		}); ok {
 			conn.StatusPresenceEventHandler = x.StatusPresenceEventHandler
 		}
 		if x, ok := handler.(interface {
-			StreamDataHandler(context.Context, *StreamDataMsg)
+			StreamDataHandler(*StreamDataMsg)
 		}); ok {
 			conn.StreamDataHandler = x.StreamDataHandler
 		}
 		if x, ok := handler.(interface {
-			StreamPresenceEventHandler(context.Context, *StreamPresenceEventMsg)
+			StreamPresenceEventHandler(*StreamPresenceEventMsg)
 		}); ok {
 			conn.StreamPresenceEventHandler = x.StreamPresenceEventHandler
 		}
+		if x, ok := handler.(interface {
+			ConnectHandler()
+		}); ok {
+			conn.ConnectHandler = x.ConnectHandler
+		}
+		if x, ok := handler.(interface {
+			DisconnectHandler(error)
+		}); ok {
+			conn.DisconnectHandler = x.DisconnectHandler
+		}
 	}
+}
+
+// ConnError is a websocket connection error.
+type ConnError string
+
+const (
+	// ErrConnAlreadyOpen is the conn already open error.
+	ErrConnAlreadyOpen ConnError = "conn already open"
+	// ErrConnNotConnected is the conn not connected error.
+	ErrConnNotConnected ConnError = "conn not connected"
+)
+
+// Error satisfies the error interface.
+func (err ConnError) Error() string {
+	return string(err)
 }
