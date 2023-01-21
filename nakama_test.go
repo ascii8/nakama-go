@@ -21,6 +21,8 @@ func TestMain(m *testing.M) {
 	var opts []nktest.BuildConfigOption
 	if os.Getenv("CI") == "" {
 		opts = append(opts, nktest.WithDefaultGoEnv(), nktest.WithDefaultGoVolumes())
+	} else {
+		persistCheckDelay = 4 * time.Second
 	}
 	nktest.Main(ctx, m,
 		nktest.WithDir("."),
@@ -224,7 +226,7 @@ func TestPersist(t *testing.T) {
 	defer cancel()
 	cl := newClient(ctx, t, nk)
 	conn := createAccountAndConn(ctx, t, cl, false, WithConnPersist(true))
-	<-time.After(100 * time.Millisecond)
+	<-time.After(persistCheckDelay)
 	if conn.stop == true {
 		t.Errorf("expected conn.stop == false")
 	}
@@ -252,7 +254,7 @@ func TestPersist(t *testing.T) {
 	if err := conn.Open(ctx); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	<-time.After(100 * time.Millisecond)
+	<-time.After(persistCheckDelay)
 	if conn.stop == true {
 		t.Errorf("expected conn.stop == false")
 	}
@@ -263,8 +265,8 @@ func TestPersist(t *testing.T) {
 	case <-ctx.Done():
 		t.Errorf("expected no error, got: %v", ctx.Err())
 		return
-	case <-time.After(2 * time.Second):
-		t.Fatalf("expected a connect event within 2 seconds")
+	case <-time.After(2 * persistCheckDelay):
+		t.Fatalf("expected a connect event within %v", 2*persistCheckDelay)
 	case b := <-connectCh:
 		if b == false {
 			t.Errorf("expected true")
@@ -284,8 +286,8 @@ func TestPersist(t *testing.T) {
 	case <-ctx.Done():
 		t.Errorf("expected no error, got: %v", ctx.Err())
 		return
-	case <-time.After(2 * time.Second):
-		t.Fatalf("expected a disconnect event within 2 seconds")
+	case <-time.After(2 * persistCheckDelay):
+		t.Fatalf("expected a disconnect event within %v", 2*persistCheckDelay)
 	case err := <-disconnectCh:
 		if err != nil {
 			t.Errorf("expected no error, got: %v", err)
@@ -294,7 +296,7 @@ func TestPersist(t *testing.T) {
 	}
 	defer close(connectCh)
 	defer close(disconnectCh)
-	<-time.After(100 * time.Millisecond)
+	<-time.After(2 * persistCheckDelay)
 }
 
 func newClient(ctx context.Context, t *testing.T, nk *nktest.Runner, opts ...Option) *Client {
@@ -359,3 +361,5 @@ func createAccountAndConn(ctx context.Context, t *testing.T, cl *Client, check b
 type rewards struct {
 	Rewards int64 `json:"rewards,omitempty"`
 }
+
+var persistCheckDelay = 100 * time.Millisecond
