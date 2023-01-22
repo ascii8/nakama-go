@@ -13,7 +13,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
@@ -54,12 +53,15 @@ type ConnHandler interface{}
 
 // Conn is a nakama realtime websocket connection.
 type Conn struct {
-	h       ClientHandler
-	url     string
-	token   string
-	binary  bool
-	query   url.Values
-	persist bool
+	h                 ClientHandler
+	url               string
+	token             string
+	binary            bool
+	query             url.Values
+	persist           bool
+	backoffMax        time.Duration
+	backoffMin        time.Duration
+	backoffMultiplier float64
 
 	ctx    context.Context
 	ws     *websocket.Conn
@@ -68,7 +70,6 @@ type Conn struct {
 
 	id  uint64
 	out chan *res
-	in  chan []byte
 	m   map[string]*res
 
 	ConnectHandler              func(context.Context)
@@ -90,20 +91,19 @@ type Conn struct {
 // NewConn creates a new nakama realtime websocket connection.
 func NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
 	conn := &Conn{
-		binary: true,
-		query:  url.Values{},
-		out:    make(chan *res),
-		in:     make(chan []byte),
-		m:      make(map[string]*res),
-		stop:   true,
+		binary:            true,
+		query:             url.Values{},
+		backoffMin:        20 * time.Millisecond,
+		backoffMax:        3 * time.Second,
+		backoffMultiplier: 1.2,
+		out:               make(chan *res),
+		m:                 make(map[string]*res),
+		stop:              true,
 	}
 	for _, o := range opts {
 		o(conn)
 	}
-	// run
-	ch := make(chan error, 1)
-	go conn.run(ctx, ch)
-	if err := <-ch; err != nil {
+	if err := conn.Open(ctx); err != nil {
 		return nil, err
 	}
 	return conn, nil
@@ -113,225 +113,112 @@ func NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
 // Nakama server.
 func (conn *Conn) Open(ctx context.Context) error {
 	if conn.Connected() {
-		return ErrConnAlreadyOpen
+		return nil
 	}
 	conn.rw.Lock()
 	conn.stop = false
 	conn.rw.Unlock()
-	if conn.persist {
-		go conn.runPersist(ctx)
-		return nil
+	if !conn.persist {
+		return conn.open(ctx)
 	}
-	return conn.open(ctx)
+	go conn.run(ctx)
+	return nil
 }
 
-// runPersist persists the websocket connection to the Nakama server.
-//
-// TODO: move constants to configurable options
-func (conn *Conn) runPersist(ctx context.Context) {
-	for !conn.stop {
-		if conn.Connected() {
+// run keeps open the websocket connection to the Nakama server when persist is
+// enabled.
+func (conn *Conn) run(ctx context.Context) {
+	for d, last := conn.backoffMin, true; !conn.stop; d = min(time.Duration(float64(d)*conn.backoffMultiplier), conn.backoffMax) {
+		connected := conn.Connected()
+		if last != connected {
+			d = conn.backoffMin
+		}
+		last = connected
+		if connected {
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(80 * time.Millisecond):
+			case <-time.After(d):
+				continue
 			}
+		}
+		if err := conn.open(ctx); err == nil {
 			continue
 		}
-		b := backoff.NewExponentialBackOff()
-		b.InitialInterval = 20 * time.Millisecond
-		b.MaxElapsedTime = 15 * time.Second
-		b.Multiplier = 1.2
-		err := backoff.Retry(func() error {
-			return conn.open(ctx)
-		}, backoff.WithContext(b, ctx))
-		if err != nil {
-			conn.h.Errf("%v", err)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(d):
 		}
 	}
 }
 
 // open opens the websocket connection to the Nakama server.
 func (conn *Conn) open(ctx context.Context) error {
-	ws, err := conn.Dial(ctx)
+	ws, err := conn.dial(ctx)
 	if err != nil {
 		return err
 	}
 	conn.rw.Lock()
 	defer conn.rw.Unlock()
-	conn.ctx, conn.cancel = context.WithCancel(ctx)
-	conn.ws = ws
+	ctx, cancel := context.WithCancel(ctx)
+	conn.ctx, conn.ws, conn.cancel = ctx, ws, cancel
 	if conn.ConnectHandler != nil {
 		go conn.ConnectHandler(conn.ctx)
 	}
-	return nil
-}
-
-// Conn returns the websocket connection, and read/write context.
-func (conn *Conn) Conn() (context.Context, *websocket.Conn, func()) {
-	conn.rw.RLock()
-	defer conn.rw.RUnlock()
-	return conn.ctx, conn.ws, conn.cancel
-}
-
-// Connected returns true when the websocket connection is connected to the
-// Nakama server.
-func (conn *Conn) Connected() bool {
-	conn.rw.RLock()
-	defer conn.rw.RUnlock()
-	return conn.ws != nil
-}
-
-// Dial creates a new websocket connection to the server.
-func (conn *Conn) Dial(ctx context.Context) (*websocket.Conn, error) {
-	urlstr, opts, err := conn.DialParams(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create dial params: %w", err)
-	}
-	ws, _, err := websocket.Dial(ctx, urlstr, opts)
-	if err != nil {
-		return nil, fmt.Errorf("unable to connect to %s: %w", urlstr, err)
-	}
-	return ws, nil
-}
-
-// DialParams builds the parameters for Dial.
-func (conn *Conn) DialParams(ctx context.Context) (string, *websocket.DialOptions, error) {
-	// build url
-	urlstr := conn.url
-	if urlstr == "" && conn.h != nil {
-		var err error
-		if urlstr, err = conn.h.SocketURL(); err != nil {
-			return "", nil, err
-		}
-	}
-	// build token
-	token := conn.token
-	if token == "" && conn.h != nil {
-		var err error
-		if token, err = conn.h.Token(ctx); err != nil {
-			return "", nil, err
-		}
-	}
-	// build query
-	query := url.Values{}
-	for k, v := range conn.query {
-		query[k] = v
-	}
-	query.Set("token", token)
-	format := "protobuf"
-	if !conn.binary {
-		format = "json"
-	}
-	query.Set("format", format)
-	httpClient := http.DefaultClient
-	if conn.h != nil {
-		httpClient = conn.h.HttpClient()
-	}
-	return urlstr + "?" + query.Encode(), buildWsOptions(httpClient), nil
-}
-
-// CloseWithErr closes the websocket connection with an error.
-func (conn *Conn) CloseWithErr(err error) error {
-	conn.rw.Lock()
-	defer conn.rw.Unlock()
-	if conn.ws != nil {
-		defer conn.ws.Close(websocket.StatusGoingAway, "going away")
-		defer conn.cancel()
-		for k := range conn.m {
-			delete(conn.m, k)
-		}
-		if conn.DisconnectHandler != nil {
-			go conn.DisconnectHandler(conn.ctx, err)
-		}
-		conn.stop, conn.ctx, conn.ws, conn.cancel = true, nil, nil, nil
-	}
-	return nil
-}
-
-// Close closes the websocket connection.
-func (conn *Conn) Close() error {
-	return conn.CloseWithErr(nil)
-}
-
-// run handles incoming and outgoing websocket messages.
-func (conn *Conn) run(ctx context.Context, ch chan error) {
-	if err := conn.Open(ctx); err != nil {
-		defer close(ch)
-		ch <- err
-		return
-	}
-	close(ch)
-	// read incoming
+	// incoming
 	go func() {
 		for {
-			buf, err := conn.read()
-			if err == nil {
-				conn.in <- buf
-			} else {
-				conn.h.Errf("unable to read message: %v", err)
-			}
-		}
-	}()
-	// dispatch outgoing/incoming
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case m := <-conn.out:
-			id, err := conn.send(m.msg)
+			_, r, err := ws.Reader(ctx)
 			if err != nil {
-				if !errors.Is(err, context.Canceled) {
-					conn.h.Errf("unable to send message: %v", err)
-				}
-				m.err <- fmt.Errorf("unable to send message: %w", err)
-				close(m.err)
-				continue
+				_ = conn.CloseWithErr(err)
+				return
 			}
-			if m.v == nil || id == "" {
-				close(m.err)
-				continue
+			buf, err := io.ReadAll(r)
+			if err != nil {
+				_ = conn.CloseWithErr(err)
+				return
 			}
-			conn.rw.Lock()
-			conn.m[id] = m
-			conn.rw.Unlock()
-		case buf := <-conn.in:
 			if buf == nil {
-				continue
+				_ = conn.CloseWithErr(ErrConnReadEmptyMessage)
+				return
 			}
 			if err := conn.recv(ctx, buf); err != nil {
 				conn.h.Errf("unable to dispatch incoming message: %v", err)
-				continue
 			}
 		}
-	}
-}
-
-// read reads a message from the websocket connection.
-func (conn *Conn) read() ([]byte, error) {
-	ctx, ws, _ := conn.Conn()
-	if ws == nil {
-		return nil, ErrConnNotConnected
-	}
-	_, r, err := ws.Reader(ctx)
-	if err != nil {
-		conn.CloseWithErr(err)
-		return nil, err
-	}
-	buf, err := io.ReadAll(r)
-	if err != nil {
-		conn.CloseWithErr(err)
-		return nil, err
-	}
-	return buf, nil
+	}()
+	// outgoing
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case m := <-conn.out:
+				id, err := conn.send(ctx, ws, m.msg)
+				if err != nil {
+					if !errors.Is(err, context.Canceled) {
+						conn.h.Errf("unable to send message: %v", err)
+					}
+					m.err <- fmt.Errorf("unable to send message: %w", err)
+					close(m.err)
+					continue
+				}
+				if m.v == nil || id == "" {
+					close(m.err)
+					continue
+				}
+				conn.rw.Lock()
+				conn.m[id] = m
+				conn.rw.Unlock()
+			}
+		}
+	}()
+	return nil
 }
 
 // send marshals the message and writes it to the websocket connection.
-func (conn *Conn) send(msg EnvelopeBuilder) (string, error) {
-	ctx, ws, _ := conn.Conn()
-	if ws == nil {
-		return "", ErrConnNotConnected
-	}
+func (conn *Conn) send(ctx context.Context, ws *websocket.Conn, msg EnvelopeBuilder) (string, error) {
 	env := msg.BuildEnvelope()
 	env.Cid = strconv.FormatUint(atomic.AddUint64(&conn.id, 1), 10)
 	buf, err := conn.marshal(env)
@@ -343,7 +230,7 @@ func (conn *Conn) send(msg EnvelopeBuilder) (string, error) {
 		typ = websocket.MessageText
 	}
 	if err := ws.Write(ctx, typ, buf); err != nil {
-		conn.CloseWithErr(err)
+		_ = conn.CloseWithErr(err)
 		return "", err
 	}
 	return env.Cid, nil
@@ -467,6 +354,86 @@ func (conn *Conn) Send(ctx context.Context, msg, v EnvelopeBuilder) error {
 	case err = <-m.err:
 	}
 	return err
+}
+
+// Connected returns true when the websocket connection is connected to the
+// Nakama server.
+func (conn *Conn) Connected() bool {
+	conn.rw.RLock()
+	defer conn.rw.RUnlock()
+	return conn.ws != nil
+}
+
+// CloseWithErr closes the websocket connection with an error.
+func (conn *Conn) CloseWithErr(err error) error {
+	conn.rw.Lock()
+	defer conn.rw.Unlock()
+	if conn.ws != nil {
+		defer conn.ws.Close(websocket.StatusGoingAway, "going away")
+		defer conn.cancel()
+		for k := range conn.m {
+			delete(conn.m, k)
+		}
+		if conn.DisconnectHandler != nil {
+			go conn.DisconnectHandler(conn.ctx, err)
+		}
+		conn.stop, conn.ctx, conn.ws, conn.cancel = true, nil, nil, nil
+	}
+	return nil
+}
+
+// Close closes the websocket connection.
+func (conn *Conn) Close() error {
+	return conn.CloseWithErr(nil)
+}
+
+// dial creates a new websocket connection to the Nakama server.
+func (conn *Conn) dial(ctx context.Context) (*websocket.Conn, error) {
+	urlstr, opts, err := conn.dialParams(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create dial params: %w", err)
+	}
+	ws, _, err := websocket.Dial(ctx, urlstr, opts)
+	if err != nil {
+		return nil, fmt.Errorf("unable to connect to %s: %w", urlstr, err)
+	}
+	return ws, nil
+}
+
+// dialParams builds the dial parameters for the nakama server.
+func (conn *Conn) dialParams(ctx context.Context) (string, *websocket.DialOptions, error) {
+	// build url
+	urlstr := conn.url
+	if urlstr == "" && conn.h != nil {
+		var err error
+		if urlstr, err = conn.h.SocketURL(); err != nil {
+			return "", nil, err
+		}
+	}
+	// build token
+	token := conn.token
+	if token == "" && conn.h != nil {
+		var err error
+		if token, err = conn.h.Token(ctx); err != nil {
+			return "", nil, err
+		}
+	}
+	// build query
+	query := url.Values{}
+	for k, v := range conn.query {
+		query[k] = v
+	}
+	query.Set("token", token)
+	format := "protobuf"
+	if !conn.binary {
+		format = "json"
+	}
+	query.Set("format", format)
+	httpClient := http.DefaultClient
+	if conn.h != nil {
+		httpClient = conn.h.HttpClient()
+	}
+	return urlstr + "?" + query.Encode(), buildWsOptions(httpClient), nil
 }
 
 // marshal marshals the message. If the format set on the connection is json,
@@ -882,6 +849,14 @@ func WithConnPersist(persist bool) ConnOption {
 	}
 }
 
+// WithConnBackoff is a nakama websocket connection option to set the
+// connection backoff (retry) settings.
+func WithConnBackoff(backoffMin, backoffMax time.Duration, backoffMultiplier float64) ConnOption {
+	return func(conn *Conn) {
+		conn.backoffMin, conn.backoffMax, conn.backoffMultiplier = backoffMin, backoffMax, backoffMultiplier
+	}
+}
+
 // WithConnHandler is a nakama websocket connection option to set the
 // connection's message handlers. See the ConnHandler type for documentation on
 // supported interfaces.
@@ -991,11 +966,19 @@ type ConnError string
 const (
 	// ErrConnAlreadyOpen is the conn already open error.
 	ErrConnAlreadyOpen ConnError = "conn already open"
-	// ErrConnNotConnected is the conn not connected error.
-	ErrConnNotConnected ConnError = "conn not connected"
+	// ErrConnReadEmptyMessage is the conn read empty message error.
+	ErrConnReadEmptyMessage ConnError = "conn read empty message"
 )
 
 // Error satisfies the error interface.
 func (err ConnError) Error() string {
 	return string(err)
+}
+
+// min returns the minimum of a, b.
+func min(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
 }

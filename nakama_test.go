@@ -169,7 +169,7 @@ func TestMatch(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	case m2.MatchId == "":
 		t.Fatalf("expected non-empty m2.MatchId")
-	case m1.MatchId != m1.MatchId:
+	case m1.MatchId != m2.MatchId:
 		t.Errorf("expected m1.MatchId == m2.MatchId")
 	case m2.Authoritative:
 		t.Errorf("expected m2.Authoritative == false")
