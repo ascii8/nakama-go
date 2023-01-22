@@ -359,9 +359,8 @@ func (conn *Conn) Send(ctx context.Context, msg, v EnvelopeBuilder) error {
 // Connected returns true when the websocket connection is connected to the
 // Nakama server.
 func (conn *Conn) Connected() bool {
-	conn.rw.RLock()
-	defer conn.rw.RUnlock()
-	return conn.ws != nil
+	ws := conn.ws
+	return ws != nil
 }
 
 // CloseWithErr closes the websocket connection with an error.
