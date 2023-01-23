@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -18,11 +19,12 @@ import (
 	"nhooyr.io/websocket"
 )
 
-// ClientHandler is the interface for connection handlers.
-type ClientHandler interface {
+// ConnClientHandler is the interface for connection handlers.
+type ConnClientHandler interface {
 	HttpClient() *http.Client
 	SocketURL() (string, error)
 	Token(context.Context) (string, error)
+	SessionEnd()
 	Logf(string, ...interface{})
 	Errf(string, ...interface{})
 }
@@ -53,15 +55,16 @@ type ConnHandler interface{}
 
 // Conn is a nakama realtime websocket connection.
 type Conn struct {
-	h                 ClientHandler
-	url               string
-	token             string
-	binary            bool
-	query             url.Values
-	persist           bool
-	backoffMax        time.Duration
-	backoffMin        time.Duration
-	backoffMultiplier float64
+	h             ConnClientHandler
+	url           string
+	token         string
+	binary        bool
+	query         url.Values
+	persist       bool
+	backoffMax    time.Duration
+	backoffMin    time.Duration
+	backoffFactor float64
+	backoffRand   *rand.Rand
 
 	ctx    context.Context
 	ws     *websocket.Conn
@@ -91,14 +94,15 @@ type Conn struct {
 // NewConn creates a new nakama realtime websocket connection.
 func NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
 	conn := &Conn{
-		binary:            true,
-		query:             url.Values{},
-		backoffMin:        20 * time.Millisecond,
-		backoffMax:        3 * time.Second,
-		backoffMultiplier: 1.2,
-		out:               make(chan *res),
-		m:                 make(map[string]*res),
-		stop:              true,
+		binary:        true,
+		query:         url.Values{},
+		backoffMin:    100 * time.Millisecond,
+		backoffMax:    3 * time.Second,
+		backoffFactor: 1.2,
+		backoffRand:   rand.New(rand.NewSource(time.Now().UnixNano())),
+		out:           make(chan *res),
+		m:             make(map[string]*res),
+		stop:          true,
 	}
 	for _, o := range opts {
 		o(conn)
@@ -112,12 +116,10 @@ func NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
 // Open opens and persists (when enabled) the websocket connection to the
 // Nakama server.
 func (conn *Conn) Open(ctx context.Context) error {
-	if conn.Connected() {
+	if conn.ws != nil {
 		return nil
 	}
-	conn.rw.Lock()
 	conn.stop = false
-	conn.rw.Unlock()
 	if !conn.persist {
 		return conn.open(ctx)
 	}
@@ -128,29 +130,41 @@ func (conn *Conn) Open(ctx context.Context) error {
 // run keeps open the websocket connection to the Nakama server when persist is
 // enabled.
 func (conn *Conn) run(ctx context.Context) {
-	for d, last := conn.backoffMin, true; !conn.stop; d = min(time.Duration(float64(d)*conn.backoffMultiplier), conn.backoffMax) {
-		connected := conn.Connected()
-		if last != connected {
-			d = conn.backoffMin
-		}
-		last = connected
-		if connected {
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(d):
-				continue
+	d, jitter, connected, last := conn.backoffMin, time.Duration(0), false, false
+	for !conn.stop {
+		if connected = conn.ws != nil; !connected {
+			if err := conn.open(ctx); err != nil {
+				conn.h.Logf("unable to open websocket: %v", err)
 			}
-		}
-		if err := conn.open(ctx); err == nil {
-			continue
 		}
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(d):
+		case <-time.After(d + jitter):
 		}
+		d, jitter = conn.backoffDur(d, last != connected)
+		last = connected
 	}
+}
+
+// backoffDur calculates backoff duration.
+func (conn *Conn) backoffDur(d time.Duration, reset bool) (time.Duration, time.Duration) {
+	switch {
+	case reset:
+		return conn.backoffMin, 0
+	case conn.backoffMax <= d:
+		jitter := time.Duration(0)
+		if conn.backoffRand != nil {
+			jitter = time.Duration(conn.backoffRand.Intn(int(conn.backoffMax)))
+		}
+		return conn.backoffMax, jitter
+	}
+	d = time.Duration(float64(d) * conn.backoffFactor)
+	jitter := time.Duration(0)
+	if conn.backoffRand != nil {
+		jitter = time.Duration(conn.backoffRand.Intn(int(d)))
+	}
+	return d, jitter
 }
 
 // open opens the websocket connection to the Nakama server.
@@ -171,16 +185,16 @@ func (conn *Conn) open(ctx context.Context) error {
 		for {
 			_, r, err := ws.Reader(ctx)
 			if err != nil {
-				_ = conn.CloseWithErr(err)
+				_ = conn.CloseWithStopErr(!conn.persist, err)
 				return
 			}
 			buf, err := io.ReadAll(r)
 			if err != nil {
-				_ = conn.CloseWithErr(err)
+				_ = conn.CloseWithStopErr(!conn.persist, err)
 				return
 			}
 			if buf == nil {
-				_ = conn.CloseWithErr(ErrConnReadEmptyMessage)
+				_ = conn.CloseWithStopErr(!conn.persist, ErrConnReadEmptyMessage)
 				return
 			}
 			if err := conn.recv(ctx, buf); err != nil {
@@ -230,7 +244,7 @@ func (conn *Conn) send(ctx context.Context, ws *websocket.Conn, msg EnvelopeBuil
 		typ = websocket.MessageText
 	}
 	if err := ws.Write(ctx, typ, buf); err != nil {
-		_ = conn.CloseWithErr(err)
+		_ = conn.CloseWithStopErr(!conn.persist, err)
 		return "", err
 	}
 	return env.Cid, nil
@@ -245,7 +259,7 @@ func (conn *Conn) recv(ctx context.Context, buf []byte) error {
 	case env.Cid == "":
 		return conn.recvNotify(ctx, env)
 	}
-	return conn.recvResponse(env)
+	return conn.recvResponse(ctx, env)
 }
 
 // recvNotify dispaches events and received updates.
@@ -306,7 +320,7 @@ func (conn *Conn) recvNotify(ctx context.Context, env *Envelope) error {
 }
 
 // recvResponse dispatches a received response (messages with cid != "").
-func (conn *Conn) recvResponse(env *Envelope) error {
+func (conn *Conn) recvResponse(ctx context.Context, env *Envelope) error {
 	conn.rw.RLock()
 	m, ok := conn.m[env.Cid]
 	conn.rw.RUnlock()
@@ -363,8 +377,8 @@ func (conn *Conn) Connected() bool {
 	return ws != nil
 }
 
-// CloseWithErr closes the websocket connection with an error.
-func (conn *Conn) CloseWithErr(err error) error {
+// CloseWithStopErr closes the websocket connection with an error.
+func (conn *Conn) CloseWithStopErr(stop bool, err error) error {
 	conn.rw.Lock()
 	defer conn.rw.Unlock()
 	if conn.ws != nil {
@@ -376,14 +390,19 @@ func (conn *Conn) CloseWithErr(err error) error {
 		if conn.DisconnectHandler != nil {
 			go conn.DisconnectHandler(conn.ctx, err)
 		}
-		conn.stop, conn.ctx, conn.ws, conn.cancel = true, nil, nil, nil
+		conn.stop, conn.ctx, conn.ws, conn.cancel = stop, nil, nil, nil
 	}
 	return nil
 }
 
+// CloseWithErr closes the websocket connection with an error.
+func (conn *Conn) CloseWithErr(err error) error {
+	return conn.CloseWithStopErr(true, nil)
+}
+
 // Close closes the websocket connection.
 func (conn *Conn) Close() error {
-	return conn.CloseWithErr(nil)
+	return conn.CloseWithStopErr(true, nil)
 }
 
 // dial creates a new websocket connection to the Nakama server.
@@ -392,8 +411,10 @@ func (conn *Conn) dial(ctx context.Context) (*websocket.Conn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to create dial params: %w", err)
 	}
+	conn.h.Logf("connecting %s", urlstr)
 	ws, _, err := websocket.Dial(ctx, urlstr, opts)
 	if err != nil {
+		conn.h.SessionEnd()
 		return nil, fmt.Errorf("unable to connect to %s: %w", urlstr, err)
 	}
 	return ws, nil
@@ -775,7 +796,7 @@ type ConnOption func(*Conn)
 
 // WithConnClientHandler is a nakama websocket connection option to set the
 // ClientHandler used.
-func WithConnClientHandler(h ClientHandler) ConnOption {
+func WithConnClientHandler(h ConnClientHandler) ConnOption {
 	return func(conn *Conn) {
 		conn.h = h
 	}
@@ -850,9 +871,17 @@ func WithConnPersist(persist bool) ConnOption {
 
 // WithConnBackoff is a nakama websocket connection option to set the
 // connection backoff (retry) settings.
-func WithConnBackoff(backoffMin, backoffMax time.Duration, backoffMultiplier float64) ConnOption {
+func WithConnBackoff(backoffMin, backoffMax time.Duration, backoffFactor float64) ConnOption {
 	return func(conn *Conn) {
-		conn.backoffMin, conn.backoffMax, conn.backoffMultiplier = backoffMin, backoffMax, backoffMultiplier
+		conn.backoffMin, conn.backoffMax, conn.backoffFactor = backoffMin, backoffMax, backoffFactor
+	}
+}
+
+// WithConnBackoff is a nakama websocket connection option to set the
+// backoff jitter random source.
+func WithConnBackoffRand(backoffRand *rand.Rand) ConnOption {
+	return func(conn *Conn) {
+		conn.backoffRand = backoffRand
 	}
 }
 
@@ -972,12 +1001,4 @@ const (
 // Error satisfies the error interface.
 func (err ConnError) Error() string {
 	return string(err)
-}
-
-// min returns the minimum of a, b.
-func min(a, b time.Duration) time.Duration {
-	if a < b {
-		return a
-	}
-	return b
 }

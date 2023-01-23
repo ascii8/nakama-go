@@ -24,6 +24,19 @@ import (
 // DefaultWsPath is the default websocket path.
 var DefaultWsPath = "/ws"
 
+// AuthHandler is an empty interface that provides a clean, extensible way to
+// register a type as a handler that is future-proofed. As used by WithAuthHandler,
+// a type that supports the any of the following smuggled interfaces:
+//
+//	AuthHandler(context.Context, *nakama.Client) error
+//
+// Will have its method added to Client as its respective <MessageType>Handler.
+//
+// For an overview of Go interface smuggling as a concept, see:
+//
+// https://utcc.utoronto.ca/~cks/space/blog/programming/GoInterfaceSmuggling
+type AuthHandler interface{}
+
 // Client is a nakama client.
 type Client struct {
 	cl          *http.Client
@@ -44,6 +57,8 @@ type Client struct {
 	unmarshaler *protojson.UnmarshalOptions
 
 	logf func(string, ...interface{})
+
+	AuthHandler func(context.Context, *Client) error
 
 	rw sync.RWMutex
 }
@@ -111,6 +126,11 @@ func (cl *Client) SocketURL() (string, error) {
 
 // Token returns the current session token. Satisfies the Handler interface.
 func (cl *Client) Token(ctx context.Context) (string, error) {
+	if cl.session == nil && cl.AuthHandler != nil {
+		if err := cl.AuthHandler(ctx, cl); err != nil {
+			return "", err
+		}
+	}
 	if err := cl.SessionRefresh(ctx); err != nil {
 		return "", err
 	}
@@ -170,7 +190,7 @@ func (cl *Client) Exec(req *http.Request) (*http.Response, error) {
 // encoding/json package to encode/decode.
 //
 // See: Marshal and Unmarshal.
-func (cl *Client) Do(ctx context.Context, method, typ string, session bool, query url.Values, msg, v interface{}) error {
+func (cl *Client) Do(ctx context.Context, method, typ string, auth bool, query url.Values, msg, v interface{}) error {
 	// marshal
 	var body io.Reader
 	if msg != nil {
@@ -185,16 +205,16 @@ func (cl *Client) Do(ctx context.Context, method, typ string, session bool, quer
 		return err
 	}
 	// refresh
-	if session && cl.refreshAuto {
+	if auth && cl.refreshAuto {
 		if err := cl.SessionRefresh(ctx); err != nil {
 			return err
 		}
 	}
 	// check active session
-	switch {
-	case session && cl.session == nil:
+	switch session := cl.session != nil; {
+	case auth && !session:
 		// error here ?
-	case session && cl.session != nil:
+	case auth && session:
 		// add auth token
 		req.Header.Set("Authorization", "Bearer "+cl.session.Token)
 	}
@@ -304,15 +324,22 @@ func (cl *Client) SessionStart(session *SessionResponse) error {
 	return nil
 }
 
+// SessionEnd ends a session without logging out. Use SessionLogout to perform a logout on the server.
+func (cl *Client) SessionEnd() {
+	cl.rw.Lock()
+	defer cl.rw.Unlock()
+	cl.session, cl.expiry, cl.expiryGraced, cl.expiryRefresh, cl.expiryRefreshGraced = nil, time.Time{}, time.Time{}, time.Time{}, time.Time{}
+}
+
 // SessionRefresh refreshes auth token for the session.
 func (cl *Client) SessionRefresh(ctx context.Context) error {
 	switch {
 	case cl.session == nil:
-		return fmt.Errorf("unable to refresh session: no active session")
+		return fmt.Errorf("unable to refresh session: %w", NewClientError(0, CodeUnauthenticated, "no active session"))
 	case !cl.SessionExpired():
 		return nil
 	case cl.SessionRefreshExpired():
-		return fmt.Errorf("unable to refresh session: refresh token expired")
+		return fmt.Errorf("unable to refresh session: %w", NewClientError(0, CodeUnauthenticated, "refresh token expired"))
 	}
 	res, err := SessionRefresh(cl.session.RefreshToken).Do(ctx, cl)
 	if err != nil {
@@ -1322,84 +1349,6 @@ func (cl *Client) WriteTournamentRecordAsync(ctx context.Context, req *WriteTour
 	req.Async(ctx, cl, f)
 }
 
-// Option is a nakama client option.
-type Option func(*Client)
-
-// WithURL is a nakama client option to set the url used.
-func WithURL(urlstr string) Option {
-	return func(cl *Client) {
-		cl.url = urlstr
-	}
-}
-
-// WithServerKey is a nakama client option to set the server key used.
-func WithServerKey(serverKey string) Option {
-	return func(cl *Client) {
-		cl.serverKey = serverKey
-	}
-}
-
-// WithUsername is a nakama client option to set the username used.
-func WithUsername(username string) Option {
-	return func(cl *Client) {
-		cl.username = username
-	}
-}
-
-// WithPassword is a nakama client option to set the password used.
-func WithPassword(password string) Option {
-	return func(cl *Client) {
-		cl.password = password
-	}
-}
-
-// WithRefreshAuto is a nakama client option to set whether or not to
-// automatically refresh the session.
-func WithRefreshAuto(refreshAuto bool) Option {
-	return func(cl *Client) {
-		cl.refreshAuto = refreshAuto
-	}
-}
-
-// WithExpiryGrace is a nakama client option to set the expiry grace used for
-// session refresh.
-func WithExpiryGrace(expiryGrace time.Duration) Option {
-	return func(cl *Client) {
-		cl.expiryGrace = expiryGrace
-	}
-}
-
-// WithHttpClient is a nakama client option to set the underlying http.Client
-// used for requests.
-func WithHttpClient(httpClient *http.Client) Option {
-	return func(cl *Client) {
-		cl.cl = httpClient
-	}
-}
-
-// WithJar is a nakama client option to set the cookie jar used by the underlying
-// http.Client.
-func WithJar(jar http.CookieJar) Option {
-	return func(cl *Client) {
-		cl.cl.Jar = jar
-	}
-}
-
-// WithTransport is a nakama client option to set the transport used by the
-// underlying http.Client.
-func WithTransport(transport http.RoundTripper) Option {
-	return func(cl *Client) {
-		cl.cl.Transport = transport
-	}
-}
-
-// WithLogger is a nakama client option to set a logger.
-func WithLogger(f func(string, ...interface{})) Option {
-	return func(cl *Client) {
-		cl.logf = f
-	}
-}
-
 // ParseTokenExpiry parse the exp field on a jwt token.
 func ParseTokenExpiry(tokenstr, typ string, grace time.Duration) (time.Time, time.Time, error) {
 	if tokenstr == "" {
@@ -1445,6 +1394,15 @@ type ClientError struct {
 	Message    string `json:"message"`
 }
 
+// NewClientError creates a client error.
+func NewClientError(statusCode int, code Code, message string) error {
+	return &ClientError{
+		StatusCode: statusCode,
+		Code:       code,
+		Message:    message,
+	}
+}
+
 // NewClientErrorFromReader reads a client error from a reader.
 func NewClientErrorFromReader(statusCode int, r io.Reader) error {
 	dec := json.NewDecoder(r)
@@ -1452,14 +1410,18 @@ func NewClientErrorFromReader(statusCode int, r io.Reader) error {
 		StatusCode: statusCode,
 	}
 	if e := dec.Decode(err); e != nil {
-		return fmt.Errorf("status %d != 200 (and unable to decode error: %w)", statusCode, e)
+		err.Code, err.Message = CodeUnknown, fmt.Sprintf("unable to decode client error response: %v", e)
 	}
 	return err
 }
 
 // Error satisfies the error interface.
 func (err *ClientError) Error() string {
-	return fmt.Sprintf("http status %d != 200: %s: %s", err.StatusCode, err.Code, err.Message)
+	s := err.Code.String() + ": " + err.Message
+	if err.StatusCode == 0 {
+		return s
+	}
+	return fmt.Sprintf("%s (%d): %s", http.StatusText(err.StatusCode), err.StatusCode, s)
 }
 
 // Code is a grpc status code.
@@ -1631,3 +1593,92 @@ const (
 	// but also expect authentication middleware to generate it.
 	CodeUnauthenticated Code = 16
 )
+
+// Option is a nakama client option.
+type Option func(*Client)
+
+// WithURL is a nakama client option to set the url used.
+func WithURL(urlstr string) Option {
+	return func(cl *Client) {
+		cl.url = urlstr
+	}
+}
+
+// WithServerKey is a nakama client option to set the server key used.
+func WithServerKey(serverKey string) Option {
+	return func(cl *Client) {
+		cl.serverKey = serverKey
+	}
+}
+
+// WithUsername is a nakama client option to set the username used.
+func WithUsername(username string) Option {
+	return func(cl *Client) {
+		cl.username = username
+	}
+}
+
+// WithPassword is a nakama client option to set the password used.
+func WithPassword(password string) Option {
+	return func(cl *Client) {
+		cl.password = password
+	}
+}
+
+// WithRefreshAuto is a nakama client option to set whether or not to
+// automatically refresh the session.
+func WithRefreshAuto(refreshAuto bool) Option {
+	return func(cl *Client) {
+		cl.refreshAuto = refreshAuto
+	}
+}
+
+// WithExpiryGrace is a nakama client option to set the expiry grace used for
+// session refresh.
+func WithExpiryGrace(expiryGrace time.Duration) Option {
+	return func(cl *Client) {
+		cl.expiryGrace = expiryGrace
+	}
+}
+
+// WithHttpClient is a nakama client option to set the underlying http.Client
+// used for requests.
+func WithHttpClient(httpClient *http.Client) Option {
+	return func(cl *Client) {
+		cl.cl = httpClient
+	}
+}
+
+// WithJar is a nakama client option to set the cookie jar used by the underlying
+// http.Client.
+func WithJar(jar http.CookieJar) Option {
+	return func(cl *Client) {
+		cl.cl.Jar = jar
+	}
+}
+
+// WithTransport is a nakama client option to set the transport used by the
+// underlying http.Client.
+func WithTransport(transport http.RoundTripper) Option {
+	return func(cl *Client) {
+		cl.cl.Transport = transport
+	}
+}
+
+// WithLogger is a nakama client option to set a logger.
+func WithLogger(f func(string, ...interface{})) Option {
+	return func(cl *Client) {
+		cl.logf = f
+	}
+}
+
+// WithAuthHandler is a nakama client option to set a auth hanndler.
+func WithAuthHandler(handler AuthHandler) Option {
+	return func(cl *Client) {
+		if x, ok := handler.(interface {
+			AuthHandler(context.Context, *Client) error
+		}); ok {
+			cl.AuthHandler = x.AuthHandler
+		}
+	}
+}

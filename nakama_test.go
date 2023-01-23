@@ -21,8 +21,6 @@ func TestMain(m *testing.M) {
 	var opts []nktest.BuildConfigOption
 	if os.Getenv("CI") == "" {
 		opts = append(opts, nktest.WithDefaultGoEnv(), nktest.WithDefaultGoVolumes())
-	} else {
-		persistCheckDelay = 4 * time.Second
 	}
 	nktest.Main(ctx, m,
 		nktest.WithDir("."),
@@ -211,6 +209,7 @@ func TestMatch(t *testing.T) {
 }
 
 func TestRpcRealtime(t *testing.T) {
+	// TODO
 }
 
 func TestChannels(t *testing.T) {
@@ -223,14 +222,13 @@ func TestChannels(t *testing.T) {
 
 func TestPersist(t *testing.T) {
 	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
-	defer cancel()
 	cl := newClient(ctx, t, nk)
 	conn := createAccountAndConn(ctx, t, cl, false, WithConnPersist(true))
-	<-time.After(persistCheckDelay)
+	<-time.After(2 * conn.backoffMin)
 	if conn.stop == true {
 		t.Errorf("expected conn.stop == false")
 	}
-	if conn.Connected() != true {
+	if conn.Connected() == false {
 		t.Fatalf("expected conn.Connected() == true")
 	}
 	if err := conn.Close(); err != nil {
@@ -240,13 +238,14 @@ func TestPersist(t *testing.T) {
 		t.Errorf("expected conn.stop == true")
 	}
 	if conn.Connected() == true {
-		t.Errorf("expected conn.Connected() != true")
+		t.Errorf("expected conn.Connected() == false")
 	}
-	connectCh := make(chan bool)
+	connectCh := make(chan bool, 1)
 	conn.ConnectHandler = func(context.Context) {
+		t.Logf("connected")
 		connectCh <- true
 	}
-	disconnectCh := make(chan error)
+	disconnectCh := make(chan error, 1)
 	conn.DisconnectHandler = func(_ context.Context, err error) {
 		t.Logf("disconnected: %v", err)
 		disconnectCh <- err
@@ -254,49 +253,63 @@ func TestPersist(t *testing.T) {
 	if err := conn.Open(ctx); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	<-time.After(persistCheckDelay)
+	<-time.After(2 * conn.backoffMin)
 	if conn.stop == true {
 		t.Errorf("expected conn.stop == false")
 	}
-	if conn.Connected() != true {
+	if conn.Connected() == false {
 		t.Fatalf("expected conn.Connected() == true")
 	}
 	select {
 	case <-ctx.Done():
 		t.Errorf("expected no error, got: %v", ctx.Err())
 		return
-	case <-time.After(2 * persistCheckDelay):
-		t.Fatalf("expected a connect event within %v", 2*persistCheckDelay)
+	case <-time.After(4 * conn.backoffMin):
+		t.Fatalf("expected a connect event within %v", 4*conn.backoffMin)
 	case b := <-connectCh:
 		if b == false {
 			t.Errorf("expected true")
 		}
 		t.Logf("connected: %t", b)
 	}
-	if err := conn.Close(); err != nil {
+	if err := conn.CloseWithStopErr(false, nil); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	if conn.stop == false {
-		t.Errorf("expected conn.stop == true")
+	if conn.stop == true {
+		t.Errorf("expected conn.stop == false")
 	}
-	if conn.Connected() == true {
-		t.Errorf("expected conn.Connected() != true")
+	<-time.After(4 * conn.backoffMin)
+	if conn.Connected() == false {
+		t.Errorf("expected conn.Connected() == true")
 	}
 	select {
 	case <-ctx.Done():
 		t.Errorf("expected no error, got: %v", ctx.Err())
 		return
-	case <-time.After(2 * persistCheckDelay):
-		t.Fatalf("expected a disconnect event within %v", 2*persistCheckDelay)
 	case err := <-disconnectCh:
 		if err != nil {
 			t.Errorf("expected no error, got: %v", err)
 		}
 		t.Logf("disconnected!")
+	case <-time.After(conn.backoffMax):
+		t.Errorf("expected a disconnect event within %v", conn.backoffMax)
 	}
-	defer close(connectCh)
-	defer close(disconnectCh)
-	<-time.After(2 * persistCheckDelay)
+	// check no disconnect event received
+	select {
+	case <-ctx.Done():
+		t.Errorf("expected no error, got: %v", ctx.Err())
+		return
+	case err := <-disconnectCh:
+		t.Errorf("expected no disconnect event, got: %v", err)
+	case <-time.After(conn.backoffMax):
+		t.Logf("done")
+	}
+	cancel()
+	<-time.After(conn.backoffMax)
+	/*
+		close(connectCh)
+		close(disconnectCh)
+	*/
 }
 
 func newClient(ctx context.Context, t *testing.T, nk *nktest.Runner, opts ...Option) *Client {
@@ -361,5 +374,3 @@ func createAccountAndConn(ctx context.Context, t *testing.T, cl *Client, check b
 type rewards struct {
 	Rewards int64 `json:"rewards,omitempty"`
 }
-
-var persistCheckDelay = 100 * time.Millisecond
