@@ -61,8 +61,8 @@ type Conn struct {
 	binary        bool
 	query         url.Values
 	persist       bool
-	backoffMax    time.Duration
 	backoffMin    time.Duration
+	backoffMax    time.Duration
 	backoffFactor float64
 	backoffRand   *rand.Rand
 

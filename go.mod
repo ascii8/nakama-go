@@ -3,7 +3,7 @@ module github.com/ascii8/nakama-go
 go 1.19
 
 require (
-	github.com/ascii8/nktest v0.9.8
+	github.com/ascii8/nktest v0.9.9
 	github.com/google/uuid v1.3.0
 	github.com/heroiclabs/nakama-common v1.26.0
 	golang.org/x/net v0.5.0
@@ -20,7 +20,6 @@ require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
-	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/cilium/ebpf v0.9.3 // indirect
 	github.com/containerd/cgroups v1.0.4 // indirect
