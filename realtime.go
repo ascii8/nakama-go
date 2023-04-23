@@ -269,7 +269,7 @@ func (err *ErrorMsg) Error() string {
 	if len(s) != 0 {
 		extra = " <" + strings.Join(s, " ") + ">"
 	}
-	return fmt.Sprintf("realtime socket error %s (%d): %s%s", err.Code, err.Code, err.Message, extra)
+	return fmt.Sprintf("realtime socket error %s (%d): %s%s", ErrorCode(err.Code), err.Code, err.Message, extra)
 }
 
 // MatchCreate creates a realtime message to create a multiplayer match.
