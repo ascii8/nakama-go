@@ -194,9 +194,9 @@ message ChannelMessageAckMsg {
   google.protobuf.Int32Value code = 3;
   // Username of the message sender.
   string username = 4;
-  // The UNIX time when the message was created.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the message was created.
   google.protobuf.Timestamp create_time = 5;
-  // The UNIX time when the message was last updated.
+  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the message was created.
   google.protobuf.Timestamp update_time = 6;
   // True if the message was persisted to the channel's history, false otherwise.
   google.protobuf.BoolValue persistent = 7;
@@ -277,7 +277,7 @@ enum ErrorCode {
 // A logical error which may occur on the server.
 message ErrorMsg {
   // The error code which should be one of "Error.Code" enums.
-  ErrorCode code = 1;
+  int32 code = 1;
   // A message in English to help developers debug the response.
   string message = 2;
   // Additional error details which may be different for each response.
