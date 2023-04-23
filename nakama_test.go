@@ -2,8 +2,10 @@ package nakama
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -213,11 +215,50 @@ func TestRpcRealtime(t *testing.T) {
 }
 
 func TestChannels(t *testing.T) {
+	const target = "my_room"
 	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
 	defer cancel()
-	cl := newClient(ctx, t, nk)
-	conn := createAccountAndConn(ctx, t, cl, true)
-	defer conn.Close()
+	cl1 := newClient(ctx, t, nk)
+	conn1 := createAccountAndConn(ctx, t, cl1, true)
+	defer conn1.Close()
+	cl2 := newClient(ctx, t, nk)
+	conn2 := createAccountAndConn(ctx, t, cl2, true)
+	defer conn2.Close()
+	recv := make(chan *ChannelMessage)
+	conn2.ChannelMessageHandler = func(ctx context.Context, msg *ChannelMessage) {
+		recv <- msg
+	}
+	ch1, err := conn1.ChannelJoin(ctx, target, ChannelType_ROOM, true, false)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	t.Logf("created channel: %s", ch1.Id)
+	if _, err := conn2.ChannelJoin(ctx, target, ChannelType_ROOM, true, false); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	msg := map[string]interface{}{
+		"msg":  "hello",
+		"code": float64(15),
+	}
+	if _, err := conn1.ChannelMessageSend(ctx, ch1.Id, msg); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	var recvMsg *ChannelMessage
+	select {
+	case <-ctx.Done():
+		t.Errorf("did not receive message: %v", ctx.Err())
+	case <-time.After(1 * time.Minute):
+		t.Error("did not receive message: timeout hit")
+	case recvMsg = <-recv:
+		t.Logf("received: %v", msg)
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal([]byte(recvMsg.Content), &m); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if !reflect.DeepEqual(m, msg) {
+		t.Errorf("expected m == msg:\n%#v\ngot:\n%#v", msg, m)
+	}
 }
 
 func TestPersist(t *testing.T) {
