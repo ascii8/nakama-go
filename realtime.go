@@ -27,7 +27,7 @@ func (msg *ChannelMsg) BuildEnvelope() *Envelope {
 func ChannelJoin(target string, typ ChannelType) *ChannelJoinMsg {
 	return &ChannelJoinMsg{
 		Target: target,
-		Type:   typ,
+		Type:   int32(typ),
 	}
 }
 

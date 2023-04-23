@@ -171,7 +171,7 @@ message ChannelJoinMsg {
   // The user ID to DM with, group ID to chat with, or room channel name to join.
   string target = 1;
   // The type of the chat channel.
-  ChannelType type = 2; // one of "ChannelId.Type".
+  int32 type = 2; // one of "ChannelId.Type".
   // Whether messages sent on this channel should be persistent.
   google.protobuf.BoolValue persistence = 3;
   // Whether the user should appear in the channel's presence list and events.
