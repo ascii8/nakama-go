@@ -2,10 +2,13 @@ package nakama
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -157,7 +160,26 @@ func (msg *ChannelMessageRemoveMsg) Async(ctx context.Context, conn *Conn, f fun
 }
 
 // ChannelMessageSend creates a realtime message to send a message on a channel.
-func ChannelMessageSend(channelId, content string) *ChannelMessageSendMsg {
+func ChannelMessageSend(channelId string, v interface{}) (*ChannelMessageSendMsg, error) {
+	var buf []byte
+	var err error
+	switch m := v.(type) {
+	case proto.Message:
+		buf, err = protojson.Marshal(m)
+	default:
+		buf, err = json.Marshal(v)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &ChannelMessageSendMsg{
+		ChannelId: channelId,
+		Content:   string(buf),
+	}, nil
+}
+
+// ChannelMessageSendRaw creates a realtime message to send a message on a channel.
+func ChannelMessageSendRaw(channelId, content string) *ChannelMessageSendMsg {
 	return &ChannelMessageSendMsg{
 		ChannelId: channelId,
 		Content:   content,
@@ -192,7 +214,27 @@ func (msg *ChannelMessageSendMsg) Async(ctx context.Context, conn *Conn, f func(
 }
 
 // ChannelMessageUpdate creates a realtime message to update a message on a channel.
-func ChannelMessageUpdate(channelId, messageId, content string) *ChannelMessageUpdateMsg {
+func ChannelMessageUpdate(channelId, messageId string, v interface{}) (*ChannelMessageUpdateMsg, error) {
+	var buf []byte
+	var err error
+	switch m := v.(type) {
+	case proto.Message:
+		buf, err = protojson.Marshal(m)
+	default:
+		buf, err = json.Marshal(v)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &ChannelMessageUpdateMsg{
+		ChannelId: channelId,
+		MessageId: messageId,
+		Content:   string(buf),
+	}, err
+}
+
+// ChannelMessageUpdateRaw creates a realtime message to update a message on a channel.
+func ChannelMessageUpdateRaw(channelId, messageId, content string) *ChannelMessageUpdateMsg {
 	return &ChannelMessageUpdateMsg{
 		ChannelId: channelId,
 		MessageId: messageId,

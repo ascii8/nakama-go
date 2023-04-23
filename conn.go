@@ -517,23 +517,59 @@ func (conn *Conn) ChannelMessageRemoveAsync(ctx context.Context, channelId, mess
 }
 
 // ChannelMessageSend sends a message on a channel.
-func (conn *Conn) ChannelMessageSend(ctx context.Context, channelId, content string) (*ChannelMessageAckMsg, error) {
-	return ChannelMessageSend(channelId, content).Send(ctx, conn)
+func (conn *Conn) ChannelMessageSend(ctx context.Context, channelId string, v interface{}) (*ChannelMessageAckMsg, error) {
+	msg, err := ChannelMessageSend(channelId, v)
+	if err != nil {
+		return nil, err
+	}
+	return msg.Send(ctx, conn)
 }
 
 // ChannelMessageSendAsync sends a message on a channel.
-func (conn *Conn) ChannelMessageSendAsync(ctx context.Context, channelId, content string, f func(*ChannelMessageAckMsg, error)) {
-	ChannelMessageSend(channelId, content).Async(ctx, conn, f)
+func (conn *Conn) ChannelMessageSendAsync(ctx context.Context, channelId string, v interface{}, f func(*ChannelMessageAckMsg, error)) {
+	if msg, err := ChannelMessageSend(channelId, v); err == nil {
+		f(nil, err)
+	} else {
+		msg.Async(ctx, conn, f)
+	}
+}
+
+// ChannelMessageSendRaw sends a message on a channel.
+func (conn *Conn) ChannelMessageSendRaw(ctx context.Context, channelId, content string) (*ChannelMessageAckMsg, error) {
+	return ChannelMessageSendRaw(channelId, content).Send(ctx, conn)
+}
+
+// ChannelMessageSendAsync sends a message on a channel.
+func (conn *Conn) ChannelMessageSendRawAsync(ctx context.Context, channelId, content string, f func(*ChannelMessageAckMsg, error)) {
+	ChannelMessageSendRaw(channelId, content).Async(ctx, conn, f)
 }
 
 // ChannelMessageUpdate sends a message to update a message on a channel.
-func (conn *Conn) ChannelMessageUpdate(ctx context.Context, channelId, messageId, content string) (*ChannelMessageAckMsg, error) {
-	return ChannelMessageUpdate(channelId, messageId, content).Send(ctx, conn)
+func (conn *Conn) ChannelMessageUpdate(ctx context.Context, channelId, messageId string, v interface{}) (*ChannelMessageAckMsg, error) {
+	msg, err := ChannelMessageUpdate(channelId, messageId, v)
+	if err != nil {
+		return nil, err
+	}
+	return msg.Send(ctx, conn)
 }
 
 // ChannelMessageUpdateAsync sends a message to update a message on a channel.
-func (conn *Conn) ChannelMessageUpdateAsync(ctx context.Context, channelId, messageId, content string, f func(*ChannelMessageAckMsg, error)) {
-	ChannelMessageUpdate(channelId, messageId, content).Async(ctx, conn, f)
+func (conn *Conn) ChannelMessageUpdateAsync(ctx context.Context, channelId, messageId string, v interface{}, f func(*ChannelMessageAckMsg, error)) {
+	if msg, err := ChannelMessageUpdate(channelId, messageId, v); err == nil {
+		f(nil, err)
+	} else {
+		msg.Async(ctx, conn, f)
+	}
+}
+
+// ChannelMessageUpdateRaw sends a message to update a message on a channel.
+func (conn *Conn) ChannelMessageUpdateRaw(ctx context.Context, channelId, messageId, content string) (*ChannelMessageAckMsg, error) {
+	return ChannelMessageUpdateRaw(channelId, messageId, content).Send(ctx, conn)
+}
+
+// ChannelMessageUpdateRawAsync sends a message to update a message on a channel.
+func (conn *Conn) ChannelMessageUpdateRawAsync(ctx context.Context, channelId, messageId, content string, f func(*ChannelMessageAckMsg, error)) {
+	ChannelMessageUpdateRaw(channelId, messageId, content).Async(ctx, conn, f)
 }
 
 // MatchCreate sends a message to create a multiplayer match.
