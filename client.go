@@ -780,6 +780,16 @@ func (cl *Client) DeleteStorageObjectsAsync(ctx context.Context, req *DeleteStor
 	req.Async(ctx, cl, f)
 }
 
+// DeleteTournamentRecord deletes a tournament record.
+func (cl *Client) DeleteTournamentRecord(ctx context.Context, tournamentId string) error {
+	return DeleteTournamentRecord(tournamentId).Do(ctx, cl)
+}
+
+// DeleteTournamentRecordAsync deletes a tournament record.
+func (cl *Client) DeleteTournamentRecordAsync(ctx context.Context, tournamentId string, f func(error)) {
+	DeleteTournamentRecord(tournamentId).Async(ctx, cl, f)
+}
+
 // DemoteGroupUsers demotes users from a group.
 func (cl *Client) DemoteGroupUsers(ctx context.Context, groupId string, userIds ...string) error {
 	return DemoteGroupUsers(groupId, userIds...).Do(ctx, cl)

@@ -3724,9 +3724,9 @@ type Leaderboard struct {
 	SortOrder uint32 `protobuf:"varint,2,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
 	// BEST, SET, INCREMENT or DECREMENT operator mode of the leaderboard.
 	Operator OpType `protobuf:"varint,3,opt,name=operator,proto3,enum=nakama.OpType" json:"operator,omitempty"`
-	// The UNIX time (for gRPC clients) or ISO string (for REST clients) when the leaderboard was previously reset. A computed value.
+	// The UNIX time when the leaderboard was previously reset. A computed value.
 	PrevReset uint32 `protobuf:"varint,4,opt,name=prev_reset,json=prevReset,proto3" json:"prev_reset,omitempty"`
-	// The UNIX time (for gRPC clients) or ISO string (for REST clients) when the leaderboard is next playable. A computed value.
+	// The UNIX time when the leaderboard is next playable. A computed value.
 	NextReset uint32 `protobuf:"varint,5,opt,name=next_reset,json=nextReset,proto3" json:"next_reset,omitempty"`
 	// Additional information stored as a JSON object.
 	Metadata string `protobuf:"bytes,6,opt,name=metadata,proto3" json:"metadata,omitempty"`
@@ -6427,9 +6427,9 @@ type Tournament struct {
 	MaxNumScore uint32 `protobuf:"varint,8,opt,name=max_num_score,json=maxNumScore,proto3" json:"max_num_score,omitempty"`
 	// True if the tournament is active and can enter. A computed value.
 	CanEnter bool `protobuf:"varint,9,opt,name=can_enter,json=canEnter,proto3" json:"can_enter,omitempty"`
-	// The UNIX time (for gRPC clients) or ISO string (for REST clients) when the tournament stops being active until next reset. A computed value.
+	// The UNIX time when the tournament stops being active until next reset. A computed value.
 	EndActive uint32 `protobuf:"varint,10,opt,name=end_active,json=endActive,proto3" json:"end_active,omitempty"`
-	// The UNIX time (for gRPC clients) or ISO string (for REST clients) when the tournament is next playable. A computed value.
+	// The UNIX time when the tournament is next playable. A computed value.
 	NextReset uint32 `protobuf:"varint,11,opt,name=next_reset,json=nextReset,proto3" json:"next_reset,omitempty"`
 	// Additional information stored as a JSON object.
 	Metadata string `protobuf:"bytes,12,opt,name=metadata,proto3" json:"metadata,omitempty"`
@@ -6441,9 +6441,9 @@ type Tournament struct {
 	EndTime *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
 	// Duration of the tournament in seconds.
 	Duration uint32 `protobuf:"varint,16,opt,name=duration,proto3" json:"duration,omitempty"`
-	// The UNIX time (for gRPC clients) or ISO string (for REST clients) when the tournament start being active. A computed value.
+	// The UNIX time when the tournament start being active. A computed value.
 	StartActive uint32 `protobuf:"varint,17,opt,name=start_active,json=startActive,proto3" json:"start_active,omitempty"`
-	// The UNIX time (for gRPC clients) or ISO string (for REST clients) when the tournament was last reset. A computed value.
+	// The UNIX time when the tournament was last reset. A computed value.
 	PrevReset uint32 `protobuf:"varint,18,opt,name=prev_reset,json=prevReset,proto3" json:"prev_reset,omitempty"`
 	// Operator.
 	Operator OpType `protobuf:"varint,19,opt,name=operator,proto3,enum=nakama.OpType" json:"operator,omitempty"`

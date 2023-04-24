@@ -564,9 +564,9 @@ message Leaderboard {
   uint32 sort_order = 2;
   // BEST, SET, INCREMENT or DECREMENT operator mode of the leaderboard.
   OpType operator = 3;
-  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the leaderboard was previously reset. A computed value.
+  // The UNIX time when the leaderboard was previously reset. A computed value.
   uint32 prev_reset = 4;
-  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the leaderboard is next playable. A computed value.
+  // The UNIX time when the leaderboard is next playable. A computed value.
   uint32 next_reset = 5;
   // Additional information stored as a JSON object.
   string metadata = 6;
@@ -998,9 +998,9 @@ message Tournament {
   uint32 max_num_score = 8;
   // True if the tournament is active and can enter. A computed value.
   bool can_enter = 9;
-  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the tournament stops being active until next reset. A computed value.
+  // The UNIX time when the tournament stops being active until next reset. A computed value.
   uint32 end_active = 10;
-  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the tournament is next playable. A computed value.
+  // The UNIX time when the tournament is next playable. A computed value.
   uint32 next_reset = 11;
   // Additional information stored as a JSON object.
   string metadata = 12;
@@ -1012,9 +1012,9 @@ message Tournament {
   google.protobuf.Timestamp end_time = 15;
   // Duration of the tournament in seconds.
   uint32 duration = 16;
-  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the tournament start being active. A computed value.
+  // The UNIX time when the tournament start being active. A computed value.
   uint32 start_active = 17;
-  // The UNIX time (for gRPC clients) or ISO string (for REST clients) when the tournament was last reset. A computed value.
+  // The UNIX time when the tournament was last reset. A computed value.
   uint32 prev_reset = 18;
   // Operator.
   OpType operator = 19;

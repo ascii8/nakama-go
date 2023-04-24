@@ -3326,3 +3326,24 @@ func (req *UserGroupsRequest) Async(ctx context.Context, cl *Client, f func(*Use
 		}
 	}()
 }
+
+// DeleteTournamentRecord creates a request to delete a leaderboard record
+func DeleteTournamentRecord(tournamentId string) *DeleteTournamentRecordRequest {
+	return &DeleteTournamentRecordRequest{
+		TournamentId: tournamentId,
+	}
+}
+
+// Do executes the request against the context and client.
+func (req *DeleteTournamentRecordRequest) Do(ctx context.Context, cl *Client) error {
+	return cl.Do(ctx, "DELETE", "v2/tournanment/"+req.TournamentId, true, nil, req, nil)
+}
+
+// Async executes the request against the context and client.
+func (req *DeleteTournamentRecordRequest) Async(ctx context.Context, cl *Client, f func(error)) {
+	go func() {
+		if err := req.Do(ctx, cl); f != nil {
+			f(err)
+		}
+	}()
+}
