@@ -3,6 +3,7 @@ package nakama
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"reflect"
@@ -303,8 +304,7 @@ func TestPersist(t *testing.T) {
 	}
 	select {
 	case <-ctx.Done():
-		t.Errorf("expected no error, got: %v", ctx.Err())
-		return
+		t.Fatalf("expected no error, got: %v", ctx.Err())
 	case <-time.After(4 * conn.backoffMin):
 		t.Fatalf("expected a connect event within %v", 4*conn.backoffMin)
 	case b := <-connectCh:
@@ -325,13 +325,12 @@ func TestPersist(t *testing.T) {
 	}
 	select {
 	case <-ctx.Done():
-		t.Errorf("expected no error, got: %v", ctx.Err())
-		return
+		t.Fatalf("expected no error, got: %v", ctx.Err())
 	case err := <-disconnectCh:
 		if err != nil {
-			t.Errorf("expected no error, got: %v", err)
+			t.Logf("disconnected!")
+			t.Fatalf("expected no error, got: %v", err)
 		}
-		t.Logf("disconnected!")
 	case <-time.After(conn.backoffMax):
 		t.Errorf("expected a disconnect event within %v", conn.backoffMax)
 	}
@@ -343,7 +342,34 @@ func TestPersist(t *testing.T) {
 	case err := <-disconnectCh:
 		t.Errorf("expected no disconnect event, got: %v", err)
 	case <-time.After(conn.backoffMax):
-		t.Logf("done")
+		t.Logf("no disconnect")
+	}
+	if err := conn.CloseWithStopErr(true, errors.New("STOPPING")); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if conn.stop == false {
+		t.Errorf("expected conn.stop == true")
+	}
+	<-time.After(4 * conn.backoffMin)
+	if conn.Connected() == true {
+		t.Errorf("expected conn.Connected() == false")
+	}
+	select {
+	case <-ctx.Done():
+		t.Fatalf("expected no error, got: %v", ctx.Err())
+	case err := <-disconnectCh:
+		switch {
+		case err == nil:
+			t.Error("expected disconnect event!")
+		case err.Error() != "STOPPING":
+			t.Error("expected STOPPING error")
+		}
+	}
+	switch {
+	case conn.Connected() == true:
+		t.Errorf("expceted conn.Connected() == false")
+	case conn.stop == false:
+		t.Errorf("expected conn.stop == true")
 	}
 	cancel()
 	<-time.After(conn.backoffMax)
@@ -351,6 +377,34 @@ func TestPersist(t *testing.T) {
 		close(connectCh)
 		close(disconnectCh)
 	*/
+}
+
+func TestKeep(t *testing.T) {
+	keep := os.Getenv("KEEP")
+	if keep == "" {
+		return
+	}
+	d, err := time.ParseDuration(keep)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	ctx, cancel, nk := nktest.WithCancel(context.Background(), t)
+	defer cancel()
+	urlstr, err := nk.RunProxy(ctx)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	t.Logf("local: %s", nk.HttpLocal())
+	t.Logf("grpc: %s", nk.GrpcLocal())
+	t.Logf("http: %s", nk.HttpLocal())
+	t.Logf("console: %s", nk.ConsoleLocal())
+	t.Logf("http_key: %s", nk.HttpKey())
+	t.Logf("server_key: %s", nk.ServerKey())
+	t.Logf("proxy: %s", urlstr)
+	select {
+	case <-time.After(d):
+	case <-ctx.Done():
+	}
 }
 
 func newClient(ctx context.Context, t *testing.T, nk *nktest.Runner, opts ...Option) *Client {

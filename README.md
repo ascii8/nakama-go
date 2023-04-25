@@ -62,6 +62,20 @@ package.
 See the [Go package documentation](https://pkg.go.dev/github.com/ascii8/nakama-go)
 for other examples.
 
+## Notes
+
+Run browser tests:
+
+```sh
+# setup wasmbrowsertest
+$ go install github.com/agnivade/wasmbrowsertest@latest
+$ cd $GOPATH/bin && ln -s wasmbrowsertest go_js_wasm_exec
+
+# run the wasmtests
+$ cd /path/to/nakama-go/wasmtest
+$ GOOS=js GOARCH=wasm go test -v
+```
+
 ## Related Links
 
 * [`github.com/ascii8/nktest`](https://github.com/ascii8/nktest) - a Nakama test runner
