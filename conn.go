@@ -185,16 +185,16 @@ func (conn *Conn) open(ctx context.Context) error {
 		for {
 			_, r, err := ws.Reader(ctx)
 			if err != nil {
-				_ = conn.CloseWithStopErr(!conn.persist, err)
+				_ = conn.CloseWithStopErr(!conn.persist, false, err)
 				return
 			}
 			buf, err := io.ReadAll(r)
 			if err != nil {
-				_ = conn.CloseWithStopErr(!conn.persist, err)
+				_ = conn.CloseWithStopErr(!conn.persist, false, err)
 				return
 			}
 			if buf == nil {
-				_ = conn.CloseWithStopErr(!conn.persist, ErrConnReadEmptyMessage)
+				_ = conn.CloseWithStopErr(!conn.persist, false, ErrConnReadEmptyMessage)
 				return
 			}
 			if err := conn.recv(ctx, buf); err != nil {
@@ -244,7 +244,7 @@ func (conn *Conn) send(ctx context.Context, ws *websocket.Conn, msg EnvelopeBuil
 		typ = websocket.MessageText
 	}
 	if err := ws.Write(ctx, typ, buf); err != nil {
-		_ = conn.CloseWithStopErr(!conn.persist, err)
+		_ = conn.CloseWithStopErr(!conn.persist, false, err)
 		return "", err
 	}
 	return env.Cid, nil
@@ -378,10 +378,13 @@ func (conn *Conn) Connected() bool {
 }
 
 // CloseWithStopErr closes the websocket connection with an error.
-func (conn *Conn) CloseWithStopErr(stop bool, err error) error {
+func (conn *Conn) CloseWithStopErr(stop, force bool, err error) error {
 	conn.rw.Lock()
 	defer conn.rw.Unlock()
 	if conn.ws != nil {
+		if force {
+			defer conn.ws.Write(conn.ctx, websocket.MessageText, []byte{'{'})
+		}
 		defer conn.ws.Close(websocket.StatusNormalClosure, "closing")
 		defer conn.cancel()
 		for k := range conn.m {
@@ -397,12 +400,12 @@ func (conn *Conn) CloseWithStopErr(stop bool, err error) error {
 
 // CloseWithErr closes the websocket connection with an error.
 func (conn *Conn) CloseWithErr(err error) error {
-	return conn.CloseWithStopErr(true, nil)
+	return conn.CloseWithStopErr(true, true, err)
 }
 
 // Close closes the websocket connection.
 func (conn *Conn) Close() error {
-	return conn.CloseWithStopErr(true, nil)
+	return conn.CloseWithStopErr(true, true, nil)
 }
 
 // dial creates a new websocket connection to the Nakama server.

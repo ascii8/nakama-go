@@ -313,7 +313,7 @@ func TestPersist(t *testing.T) {
 		}
 		t.Logf("connected: %t", b)
 	}
-	if err := conn.CloseWithStopErr(false, nil); err != nil {
+	if err := conn.CloseWithStopErr(false, false, nil); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	if conn.stop == true {
@@ -344,7 +344,7 @@ func TestPersist(t *testing.T) {
 	case <-time.After(conn.backoffMax):
 		t.Logf("no disconnect")
 	}
-	if err := conn.CloseWithStopErr(true, errors.New("STOPPING")); err != nil {
+	if err := conn.CloseWithStopErr(true, true, errors.New("STOPPING")); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	if conn.stop == false {

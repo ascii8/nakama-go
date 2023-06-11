@@ -6,7 +6,7 @@ require (
 	github.com/ascii8/nktest v0.10.0
 	github.com/google/uuid v1.3.0
 	github.com/heroiclabs/nakama-common v1.27.0
-	golang.org/x/net v0.9.0
+	golang.org/x/net v0.10.0
 	google.golang.org/protobuf v1.28.1
 	nhooyr.io/websocket v1.8.7
 )
@@ -109,8 +109,8 @@ require (
 	golang.org/x/crypto v0.0.0-20220919173607-35f4265a4bc0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.7.0 // indirect
-	golang.org/x/term v0.7.0 // indirect
+	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	google.golang.org/genproto v0.0.0-20220720214146-176da50484ac // indirect
