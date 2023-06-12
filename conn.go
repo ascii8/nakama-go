@@ -382,10 +382,10 @@ func (conn *Conn) CloseWithStopErr(stop, force bool, err error) error {
 	conn.rw.Lock()
 	defer conn.rw.Unlock()
 	if conn.ws != nil {
+		defer conn.ws.Close(websocket.StatusNormalClosure, "closing")
 		if force {
 			defer conn.ws.Write(conn.ctx, websocket.MessageText, []byte{'{'})
 		}
-		defer conn.ws.Close(websocket.StatusNormalClosure, "closing")
 		defer conn.cancel()
 		for k := range conn.m {
 			delete(conn.m, k)
