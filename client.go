@@ -338,6 +338,8 @@ func (cl *Client) SessionRefresh(ctx context.Context) error {
 		return fmt.Errorf("unable to refresh session: %w", NewClientError(0, CodeUnauthenticated, "no active session"))
 	case !cl.SessionExpired():
 		return nil
+	case cl.SessionRefreshExpired() && cl.AuthHandler != nil:
+		return cl.AuthHandler(ctx, cl)
 	case cl.SessionRefreshExpired():
 		return fmt.Errorf("unable to refresh session: %w", NewClientError(0, CodeUnauthenticated, "refresh token expired"))
 	}
