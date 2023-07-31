@@ -2629,7 +2629,7 @@ func (req *NotificationsRequest) Do(ctx context.Context, cl *Client) (*Notificat
 		query.Set("cacheableCursor", req.CacheableCursor)
 	}
 	res := new(NotificationsResponse)
-	if err := cl.Do(ctx, "GET", "v2/notifications", true, query, nil, res); err != nil {
+	if err := cl.Do(ctx, "GET", "v2/notification", true, query, nil, res); err != nil {
 		return nil, err
 	}
 	return res, nil
