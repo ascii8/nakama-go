@@ -2653,7 +2653,11 @@ func DeleteNotifications(ids ...string) *DeleteNotificationsRequest {
 
 // Do executes the request against the context and client.
 func (req *DeleteNotificationsRequest) Do(ctx context.Context, cl *Client) error {
-	return cl.Do(ctx, "DELETE", "v2/notification", true, nil, req, nil)
+	query := url.Values{}
+	if req.Ids != nil {
+		query.Set("limit", strings.Join(req.Ids, ","))
+	}
+	return cl.Do(ctx, "DELETE", "v2/notification", true, query, req, nil)
 }
 
 // Async executes the request against the context and client.
