@@ -2654,8 +2654,8 @@ func DeleteNotifications(ids ...string) *DeleteNotificationsRequest {
 // Do executes the request against the context and client.
 func (req *DeleteNotificationsRequest) Do(ctx context.Context, cl *Client) error {
 	query := url.Values{}
-	if req.Ids != nil {
-		query.Set("limit", strings.Join(req.Ids, ","))
+	for _, v := range req.Ids {
+		query.Add("ids", v)
 	}
 	return cl.Do(ctx, "DELETE", "v2/notification", true, query, req, nil)
 }
@@ -3082,8 +3082,8 @@ func (req *TournamentRecordsRequest) WithCursor(cursor string) *TournamentRecord
 // Do executes the request against the context and client.
 func (req *TournamentRecordsRequest) Do(ctx context.Context, cl *Client) (*TournamentRecordsResponse, error) {
 	query := url.Values{}
-	if req.OwnerIds != nil {
-		query.Set("ownerIds", strings.Join(req.OwnerIds, ","))
+	for _, v := range req.OwnerIds {
+		query.Add("ownerIds", v)
 	}
 	if req.Limit != nil {
 		query.Set("limit", strconv.FormatInt(int64(req.Limit.Value), 10))
@@ -3253,8 +3253,8 @@ func (req *UsersRequest) WithFacebookIds(facebookIds ...string) *UsersRequest {
 // Do executes the request against the context and client.
 func (req *UsersRequest) Do(ctx context.Context, cl *Client) (*UsersResponse, error) {
 	query := url.Values{}
-	if len(req.Ids) != 0 {
-		query.Set("ids", strings.Join(req.Ids, ","))
+	for _, v := range req.Ids {
+		query.Add("ids", v)
 	}
 	if len(req.Usernames) != 0 {
 		query.Set("usernames", strings.Join(req.Usernames, ","))
