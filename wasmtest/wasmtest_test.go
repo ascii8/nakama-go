@@ -27,7 +27,7 @@ func TestPersist(t *testing.T) {
 	if !conn.Connected() {
 		t.Errorf("expected conn to be connected")
 	}
-	if err := conn.CloseWithStopErr(true, errors.New("STOPPING")); err != nil {
+	if err := conn.CloseWithStopErr(true, false, errors.New("STOPPING")); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	select {
