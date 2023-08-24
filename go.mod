@@ -3,10 +3,10 @@ module github.com/ascii8/nakama-go
 go 1.19
 
 require (
-	github.com/ascii8/nktest v0.12.0
+	github.com/ascii8/nktest v0.12.1
 	github.com/google/uuid v1.3.0
-	github.com/heroiclabs/nakama-common v1.28.0
-	golang.org/x/net v0.11.0
+	github.com/heroiclabs/nakama-common v1.28.1
+	golang.org/x/net v0.13.0
 	google.golang.org/protobuf v1.31.0
 	nhooyr.io/websocket v1.8.7
 )
@@ -27,12 +27,12 @@ require (
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/containerd v1.7.2 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3 // indirect
-	github.com/containers/buildah v1.31.0 // indirect
-	github.com/containers/common v0.55.2 // indirect
+	github.com/containers/buildah v1.31.2 // indirect
+	github.com/containers/common v0.55.3 // indirect
 	github.com/containers/image/v5 v5.26.1 // indirect
 	github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 // indirect
 	github.com/containers/ocicrypt v1.1.7 // indirect
-	github.com/containers/podman/v4 v4.6.0 // indirect
+	github.com/containers/podman/v4 v4.6.1 // indirect
 	github.com/containers/psgo v1.8.0 // indirect
 	github.com/containers/storage v1.48.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
@@ -121,13 +121,13 @@ require (
 	go.mongodb.org/mongo-driver v1.11.3 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/crypto v0.10.0 // indirect
+	golang.org/x/crypto v0.11.0 // indirect
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
-	golang.org/x/term v0.9.0 // indirect
-	golang.org/x/text v0.10.0 // indirect
+	golang.org/x/term v0.10.0 // indirect
+	golang.org/x/text v0.11.0 // indirect
 	golang.org/x/tools v0.9.3 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/grpc v1.55.0 // indirect
