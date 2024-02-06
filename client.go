@@ -403,6 +403,11 @@ func (cl *Client) SessionRefreshExpired() bool {
 	return cl.session == nil || cl.expiryRefresh.IsZero() || time.Now().After(cl.expiryRefreshGraced)
 }
 
+// SessionWasCreated returns whether or not the account was newly created at the beginning of the session.
+func (cl *Client) SessionWasCreated() bool {
+	return cl.session != nil && cl.session.Created
+}
+
 // NewConn creates a new a nakama realtime websocket connection, and runs until
 // the context is closed.
 func (cl *Client) NewConn(ctx context.Context, opts ...ConnOption) (*Conn, error) {
