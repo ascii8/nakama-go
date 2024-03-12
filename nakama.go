@@ -2795,6 +2795,9 @@ func (req *RpcRequest) unmarshal(msg *RpcMsg) error {
 		return proto.Unmarshal([]byte(msg.Payload), v)
 	}
 	// json decode
+	if req.v == nil {
+		return nil
+	}
 	dec := json.NewDecoder(strings.NewReader(msg.Payload))
 	dec.DisallowUnknownFields()
 	return dec.Decode(req.v)
