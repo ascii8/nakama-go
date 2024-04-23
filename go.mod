@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/ascii8/nktest v0.12.3
 	github.com/google/uuid v1.6.0
-	github.com/heroiclabs/nakama-common v1.30.1
+	github.com/heroiclabs/nakama-common v1.31.0
 	golang.org/x/net v0.19.0
 	google.golang.org/protobuf v1.31.0
 	nhooyr.io/websocket v1.8.10
